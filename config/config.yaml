@@ -1,0 +1,13 @@
+app:
+  name: "Medix BE"
+  port: "8080"
+
+database:
+  host: localhost
+  port: 5432
+  username: postgres
+  password: password
+  name: medix
+  ssl: disable
+
+migration_path: "file://migrations/data"
