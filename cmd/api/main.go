@@ -4,30 +4,32 @@ import (
 	"log"
 
 	"medix-be/config"
-	"medix-be/internal/handler"
-	"medix-be/internal/repository"
-	"medix-be/internal/router"
-	"medix-be/internal/service"
 	"medix-be/migrations"
+
+	// Import modul-modul kamu
+	"medix-be/internal/medicine"
+	// "medix-be/internal/transaction"
+	// "medix-be/internal/user"
+
+	"github.com/gin-gonic/gin"
+	"github.com/sirupsen/logrus"
 )
 
 func main() {
 	config.LoadEnv()
-
 	migrations.RunMigrations()
 	config.ConnectDatabase()
 
-	db := config.DB
+	logger := logrus.New()
+	r := gin.Default()
 
-	obatRepo := repository.NewObatRepository(db)
-	obatService := service.NewObatService(obatRepo)
-	obatHandler := handler.NewObatHandler(obatService)
+	apiV1 := r.Group("/api/v1")
 
-	authRepo := repository.NewAuthRepository(db)
-	authService := service.NewAuthService(authRepo)
-	authHandler := handler.NewAuthHandler(authService)
-
-	r := router.SetupRouter(obatHandler, authHandler)
+	medicine.StartApp(&medicine.ModuleConfig{
+		DB:     config.DB,
+		Logger: logger,
+		Router: apiV1,
+	})
 
 	log.Println("Server Medix BE running on port 8080")
 	if err := r.Run(":8080"); err != nil {
