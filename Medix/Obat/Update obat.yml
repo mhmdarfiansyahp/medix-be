@@ -1,0 +1,29 @@
+info:
+  name: Update obat
+  type: http
+  seq: 3
+
+http:
+  method: PUT
+  url: "{{baseUrl}}/api/v1/medicines/1"
+  body:
+    type: json
+    data: |-
+      {
+        "nama_obat": "Paracetamol Extra 500mg",
+        "harga": 15000,
+        "stok": 100,
+        "jenis_obat_id": 1
+      }
+  auth: inherit
+
+runtime:
+  variables:
+    - name: baseUrl
+      value: http://localhost:8080
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

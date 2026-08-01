@@ -1,0 +1,36 @@
+info:
+  name: Create obat
+  type: http
+  seq: 3
+
+http:
+  method: POST
+  url: "{{baseUrl}}/api/v1/medicines"
+  body:
+    type: json
+    data: |-
+      {
+        "nama_obat": "Paracetamol 500mg",
+        "merk_obat": "Bodrex",
+        "jenis_obat_id": 1,
+        "barcode": "8991234567890",
+        "tgl_kadaluarsa": "2027-12-31",
+        "harga": 12000,
+        "stok": 50,
+        "stok_minimum": 10,
+        "keterangan": "Obat pereda demam dan nyeri",
+        "status": "aktif",
+        "gambar": "https://example.com/images/paracetamol.jpg"
+      }
+  auth: inherit
+
+runtime:
+  variables:
+    - name: baseUrl
+      value: http://localhost:8080
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

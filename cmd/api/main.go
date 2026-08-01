@@ -7,6 +7,7 @@ import (
 	"medix-be/migrations"
 
 	// Import modul-modul kamu
+	"medix-be/internal/drug"
 	"medix-be/internal/medicine"
 	// "medix-be/internal/transaction"
 	// "medix-be/internal/user"
@@ -26,6 +27,12 @@ func main() {
 	apiV1 := r.Group("/api/v1")
 
 	medicine.StartApp(&medicine.ModuleConfig{
+		DB:     config.DB,
+		Logger: logger,
+		Router: apiV1,
+	})
+
+	drug.StartApp(&drug.TypeDrugHandler{
 		DB:     config.DB,
 		Logger: logger,
 		Router: apiV1,

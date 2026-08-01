@@ -12,7 +12,6 @@ import (
 	"gorm.io/gorm"
 )
 
-// ModuleContract atau Config yang dibutuhkan modul medicine
 type ModuleConfig struct {
 	DB     *gorm.DB
 	Logger *logrus.Logger
@@ -22,13 +21,10 @@ type ModuleConfig struct {
 func StartApp(cfg *ModuleConfig) {
 	cfg.Logger.Info("Medicine module starting...")
 
-	// 1. Repository Layer
 	medicineRepo := repository.NewMedicineRepository(cfg.DB)
 
-	// 2. Service Layer
 	medicineSvc := service.NewMedicineService(medicineRepo)
 
-	// 3. Handler Layer & Auto Register Route
 	handlerContract := &handler.HandlerContract{
 		Logger: cfg.Logger,
 		Router: cfg.Router,
@@ -38,5 +34,5 @@ func StartApp(cfg *ModuleConfig) {
 		MedicineService: medicineSvc,
 	})
 
-	fmt.Println("✅ Medicine module successfully initialized!")
+	fmt.Println("Medicine module successfully initialized!")
 }

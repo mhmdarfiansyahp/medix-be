@@ -1,0 +1,26 @@
+info:
+  name: Create data
+  type: http
+  seq: 2
+
+http:
+  method: POST
+  url: "{{baseUrl}}/api/v1/type-drugs"
+  body:
+    type: json
+    data: |-
+      {
+        "nama_jenis": "Tablet"
+      }
+  auth: inherit
+
+runtime:
+  variables:
+    - name: baseUrl
+      value: http://localhost:8080
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

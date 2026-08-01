@@ -8,7 +8,7 @@ type User struct {
 	NoTelp    string    `gorm:"column:no_telp;size:20" json:"no_telp"`
 	Role      string    `gorm:"column:role;size:20;not null" json:"role"`
 	Username  string    `gorm:"column:username;size:50;not null;unique" json:"username"`
-	Password  string    `gorm:"column:password;size:255;not null" json:"-"` // Hidden dari response JSON
+	Password  string    `gorm:"column:password;size:255;not null" json:"-"`
 	Status    string    `gorm:"column:status;size:20;default:aktif" json:"status"`
 	Foto      string    `gorm:"column:foto;size:255" json:"foto"`
 	CreatedAt time.Time `gorm:"column:created_at;autoCreateTime" json:"created_at"`
