@@ -9,8 +9,8 @@ import (
 	// Import modul-modul kamu
 	"medix-be/internal/drug"
 	"medix-be/internal/medicine"
-	// "medix-be/internal/transaction"
-	// "medix-be/internal/user"
+	"medix-be/internal/transaction"
+	"medix-be/internal/user"
 
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
@@ -33,6 +33,18 @@ func main() {
 	})
 
 	drug.StartApp(&drug.TypeDrugHandler{
+		DB:     config.DB,
+		Logger: logger,
+		Router: apiV1,
+	})
+
+	user.StartApp(&user.UserHandler{
+		DB:     config.DB,
+		Logger: logger,
+		Router: apiV1,
+	})
+
+	transaction.StartApp(&transaction.TransactionHandler{
 		DB:     config.DB,
 		Logger: logger,
 		Router: apiV1,

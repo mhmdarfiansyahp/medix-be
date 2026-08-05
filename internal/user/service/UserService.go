@@ -2,6 +2,7 @@ package service
 
 import (
 	"errors"
+	"golang.org/x/crypto/bcrypt"
 	"medix-be/internal/user/model/dto"
 	"medix-be/internal/user/model/entities"
 	"medix-be/internal/user/repository"
@@ -24,12 +25,17 @@ func NewUserService(repo repository.UserRepository) UserService {
 }
 
 func (s *userService) CreateUser(req dto.CreateUserRequest) (*dto.UserResponse, error) {
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+	if err != nil {
+		return nil, errors.New("gagal memproses password")
+	}
+
 	user := model.User{
 		NamaUser: req.NamaUser,
 		NoTelp:   req.NoTelp,
 		Role:     req.Role,
 		Username: req.Username,
-		Password: req.Password,
+		Password: string(hashedPassword),
 		Status:   req.Status,
 		Foto:     req.Foto,
 	}
@@ -86,11 +92,19 @@ func (s *userService) UpdateUser(id uint, req dto.UpdateUserRequest) (*dto.UserR
 		user.Username = req.Username
 	}
 	if req.Password != "" {
-		user.Password = req.Password
+		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+		if err != nil {
+			return nil, errors.New("gagal memproses password baru")
+		}
+		user.Password = string(hashedPassword)
 	}
 	if req.Status != "" {
 		user.Status = req.Status
 	}
+	if req.Foto != "" {
+		user.Foto = req.Foto
+	}
+
 	if err := s.repo.Update(user); err != nil {
 		return nil, err
 	}

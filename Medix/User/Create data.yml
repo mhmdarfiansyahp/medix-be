@@ -1,0 +1,32 @@
+info:
+  name: Create data
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: "{{baseUrl}}/api/v1/users"
+  body:
+    type: json
+    data: |-
+      {
+        "nama_user": "Budi Santoso",
+        "no_telp": "081234567890",
+        "role": "kasir",
+        "username": "budis",
+        "password": "rahasia123",
+        "status": "aktif",
+        "foto": "uploads/budi.jpg"
+      }
+  auth: inherit
+
+runtime:
+  variables:
+    - name: baseUrl
+      value: http://localhost:8080
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
