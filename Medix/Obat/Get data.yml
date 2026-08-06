@@ -1,0 +1,30 @@
+info:
+  name: Get data
+  type: http
+  seq: 4
+
+http:
+  method: GET
+  url: "{{baseUrl}}/api/v1/medicines?search=paracetamol&jenis_obat_id=1&status=aktif"
+  params:
+    - name: search
+      value: paracetamol
+      type: query
+    - name: jenis_obat_id
+      value: "1"
+      type: query
+    - name: status
+      value: aktif
+      type: query
+  auth: inherit
+
+runtime:
+  variables:
+    - name: baseUrl
+      value: http://localhost:8080
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

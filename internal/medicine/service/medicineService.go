@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"errors"
 	"medix-be/internal/medicine/model/dto"
 	"medix-be/internal/medicine/model/entities"
@@ -10,10 +11,11 @@ import (
 
 type MedicineService interface {
 	CreateMedicine(req dto.CreateMedicineRequest) (*dto.MedicineResponse, error)
-	GetAllMedicines() ([]dto.MedicineResponse, error)
+	GetAllMedicines(ctx context.Context, params dto.MedicineFilterParams) ([]dto.MedicineResponse, error)
 	GetMedicineByID(id uint) (*dto.MedicineResponse, error)
-	GetMedicineByBarcode(barcode string) (*dto.MedicineResponse, error)
+	GetMedicineByBarcode(ctx context.Context, barcode string) (*dto.MedicineResponse, error)
 	UpdateMedicine(id uint, req dto.UpdateMedicineRequest) (*dto.MedicineResponse, error)
+	ToggleActiveStatus(ctx context.Context, id uint, isActive bool) error
 	DeleteMedicine(id uint) error
 }
 
@@ -29,6 +31,13 @@ func (s *medicineService) CreateMedicine(req dto.CreateMedicineRequest) (*dto.Me
 	parsedDate, err := time.Parse("2006-01-02", req.TglKadaluarsa)
 	if err != nil {
 		return nil, errors.New("format tgl_kadaluarsa harus YYYY-MM-DD")
+	}
+
+	if req.Barcode != nil && *req.Barcode != "" {
+		existing, _ := s.repo.FindByBarcode(*req.Barcode)
+		if existing != nil {
+			return nil, errors.New("barcode sudah digunakan oleh obat lain")
+		}
 	}
 
 	status := req.Status
@@ -63,8 +72,8 @@ func (s *medicineService) CreateMedicine(req dto.CreateMedicineRequest) (*dto.Me
 	return &res, nil
 }
 
-func (s *medicineService) GetAllMedicines() ([]dto.MedicineResponse, error) {
-	medicines, err := s.repo.FindAll()
+func (s *medicineService) GetAllMedicines(ctx context.Context, params dto.MedicineFilterParams) ([]dto.MedicineResponse, error) {
+	medicines, err := s.repo.FindAll(ctx, params)
 	if err != nil {
 		return nil, err
 	}
@@ -86,7 +95,7 @@ func (s *medicineService) GetMedicineByID(id uint) (*dto.MedicineResponse, error
 	return &res, nil
 }
 
-func (s *medicineService) GetMedicineByBarcode(barcode string) (*dto.MedicineResponse, error) {
+func (s *medicineService) GetMedicineByBarcode(ctx context.Context, barcode string) (*dto.MedicineResponse, error) {
 	medicine, err := s.repo.FindByBarcode(barcode)
 	if err != nil {
 		return nil, errors.New("obat dengan barcode tersebut tidak ditemukan")
@@ -101,7 +110,15 @@ func (s *medicineService) UpdateMedicine(id uint, req dto.UpdateMedicineRequest)
 	if err != nil {
 		return nil, errors.New("obat tidak ditemukan")
 	}
-	
+
+	if req.Barcode != nil && *req.Barcode != "" {
+		existing, _ := s.repo.FindByBarcode(*req.Barcode)
+		if existing != nil && existing.IDObat != id {
+			return nil, errors.New("barcode sudah digunakan oleh obat lain")
+		}
+		medicine.Barcode = req.Barcode
+	}
+
 	if req.NamaObat != "" {
 		medicine.NamaObat = req.NamaObat
 	}
@@ -110,9 +127,6 @@ func (s *medicineService) UpdateMedicine(id uint, req dto.UpdateMedicineRequest)
 	}
 	if req.JenisObatID != 0 {
 		medicine.JenisObatID = req.JenisObatID
-	}
-	if req.Barcode != "" {
-		medicine.Barcode = req.Barcode
 	}
 	if req.TglKadaluarsa != "" {
 		parsedDate, err := time.Parse("2006-01-02", req.TglKadaluarsa)
@@ -148,6 +162,20 @@ func (s *medicineService) UpdateMedicine(id uint, req dto.UpdateMedicineRequest)
 	return &res, nil
 }
 
+func (s *medicineService) ToggleActiveStatus(ctx context.Context, id uint, isActive bool) error {
+	_, err := s.repo.FindByID(id)
+	if err != nil {
+		return errors.New("obat tidak ditemukan")
+	}
+
+	statusStr := "nonaktif"
+	if isActive {
+		statusStr = "aktif"
+	}
+
+	return s.repo.UpdateStatus(ctx, id, statusStr)
+}
+
 func (s *medicineService) DeleteMedicine(id uint) error {
 	_, err := s.repo.FindByID(id)
 	if err != nil {
@@ -157,7 +185,7 @@ func (s *medicineService) DeleteMedicine(id uint) error {
 	return s.repo.Delete(id)
 }
 
-// Helper untuk format mapping response
+// Helper Mapping Response
 func toMedicineResponse(m model.Obat) dto.MedicineResponse {
 	return dto.MedicineResponse{
 		IDObat:        m.IDObat,

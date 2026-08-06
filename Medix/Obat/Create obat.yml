@@ -11,16 +11,16 @@ http:
     data: |-
       {
         "nama_obat": "Paracetamol 500mg",
-        "merk_obat": "Bodrex",
+        "merk_obat": "Kimia Farma",
         "jenis_obat_id": 1,
         "barcode": "8991234567890",
         "tgl_kadaluarsa": "2027-12-31",
-        "harga": 12000,
+        "harga": 15000,
         "stok": 50,
         "stok_minimum": 10,
-        "keterangan": "Obat pereda demam dan nyeri",
+        "keterangan": "Obat penurun panas dan pereda nyeri",
         "status": "aktif",
-        "gambar": "https://example.com/images/paracetamol.jpg"
+        "gambar": "https://example.com/paracetamol.jpg"
       }
   auth: inherit
 

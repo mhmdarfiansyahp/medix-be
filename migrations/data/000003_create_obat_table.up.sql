@@ -9,11 +9,19 @@ CREATE TABLE obat (
     stok           INT NOT NULL DEFAULT 0 CHECK (stok >= 0),
     stok_minimum   INT DEFAULT 10,
     keterangan     TEXT,
-    status         VARCHAR(20) NOT NULL DEFAULT 'aktif' CHECK (status IN ('aktif','nonaktif')),
+    status         TINYINT NOT NULL DEFAULT 1 CHECK (status IN (1, 0)),
     gambar         VARCHAR(255),
     created_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at     TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 CREATE INDEX idx_obat_status ON obat(status);
+
 CREATE INDEX idx_obat_kadaluarsa ON obat(tgl_kadaluarsa);
+
+CREATE INDEX idx_obat_nama_lower ON obat (LOWER(nama_obat));
+
+CREATE INDEX idx_obat_jenis ON obat (jenis_obat_id);
+
+CREATE UNIQUE INDEX idx_obat_barcode_unique ON obat (barcode) 
+WHERE barcode IS NOT NULL AND barcode <> '';

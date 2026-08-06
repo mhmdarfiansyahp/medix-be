@@ -1,18 +1,16 @@
 info:
-  name: Update obat
+  name: Update Status Obat
   type: http
-  seq: 3
+  seq: 6
 
 http:
-  method: PUT
-  url: "{{baseUrl}}/api/v1/medicines/2"
+  method: PATCH
+  url: "{{baseUrl}}/api/v1/medicines/2/status"
   body:
     type: json
     data: |-
       {
-        "nama_obat": "Paracetamol Extra 500mg",
-        "harga": 18000,
-        "stok": 45
+        "is_active": false
       }
   auth: inherit
 

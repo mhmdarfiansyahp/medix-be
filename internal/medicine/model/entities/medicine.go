@@ -11,7 +11,7 @@ type Obat struct {
 	MerkObat      string         `gorm:"column:merk_obat;size:100" json:"merk_obat"`
 	JenisObatID   uint           `gorm:"column:jenis_obat_id" json:"jenis_obat_id"`
 	JenisObat     model.TypeDrug `gorm:"foreignKey:JenisObatID;references:IDJenis;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;" json:"jenis_obat,omitempty"`
-	Barcode       string         `gorm:"column:barcode;size:50;unique" json:"barcode"`
+	Barcode      *string         `gorm:"column:barcode;size:50;unique" json:"barcode"`
 	TglKadaluarsa time.Time      `gorm:"column:tgl_kadaluarsa;type:date;not null" json:"tgl_kadaluarsa"`
 	Harga         float64        `gorm:"column:harga;type:numeric(12,2);not null" json:"harga"`
 	Stok          int            `gorm:"column:stok;not null;default:0" json:"stok"`
