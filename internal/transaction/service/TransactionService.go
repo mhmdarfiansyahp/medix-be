@@ -2,16 +2,21 @@ package service
 
 import (
 	"errors"
+	"fmt"
 	"gorm.io/gorm"
 	"medix-be/internal/transaction/model"
 	"medix-be/internal/transaction/model/dto"
 	"medix-be/internal/transaction/repository"
+	"time"
 )
 
 type TransactionService interface {
-	CreateTransaction(req dto.CreateTransactionRequest) (*dto.TransactionResponse, error)
+	CreateTransaction(userID uint, req dto.CreateTransactionRequest) (*dto.TransactionResponse, error)
 	GetAllTransactions() ([]dto.TransactionResponse, error)
 	GetTransactionByID(id uint) (*dto.TransactionResponse, error)
+	CancelTransaction(id uint, userID uint) error
+	GetTodayTransactions(userID uint) (*dto.TodayTransactionResponse, error)
+	GetReceipt(id uint) (*dto.ReceiptResponse, error)
 }
 
 type transactionService struct {
@@ -22,46 +27,88 @@ func NewTransactionService(repo repository.TransactionRepository) TransactionSer
 	return &transactionService{repo: repo}
 }
 
-func (s *transactionService) CreateTransaction(req dto.CreateTransactionRequest) (*dto.TransactionResponse, error) {
-	var totalHarga float64
+func (s *transactionService) CreateTransaction(userID uint, req dto.CreateTransactionRequest) (*dto.TransactionResponse, error) {
+	var transaksi model.Transaksi
 	var detailsEntities []model.DetailPembelian
+	var totalHarga float64
 
-	// Hitung total harga & siapkan data detail
-	for _, item := range req.Details {
-		subtotal := float64(item.Jumlah) * item.HargaSatuan
-		totalHarga += subtotal
+	seenObat := make(map[uint]bool)
 
-		detailsEntities = append(detailsEntities, model.DetailPembelian{
-			IDObat:      item.IDObat,
-			Jumlah:      item.Jumlah,
-			HargaSatuan: item.HargaSatuan,
-			Subtotal:    subtotal,
-		})
-	}
-
-	transaksi := model.Transaksi{
-		IDUser:     req.IDUser,
-		TotalHarga: totalHarga,
-		Status:     "selesai",
-	}
-
-	// Jalankan transaksi DB (ACID safe)
 	err := s.repo.GetDB().Transaction(func(tx *gorm.DB) error {
-		// 1. Simpan Header Transaksi
+		for _, item := range req.Details {
+
+			if seenObat[item.IDObat] {
+				return errors.New(
+					"obat yang sama tidak boleh dimasukkan lebih dari satu kali",
+				)
+			}
+
+			seenObat[item.IDObat] = true
+
+			// Ambil obat dari database
+			obat, err := s.repo.FindObatByID(tx, item.IDObat)
+			if err != nil {
+				return errors.New("obat tidak ditemukan")
+			}
+
+			// Pastikan obat aktif
+			if obat.Status != 1 {
+				return fmt.Errorf(
+					"obat %s sedang tidak aktif",
+					obat.NamaObat,
+				)
+			}
+
+			// Validasi stok
+			if obat.Stok < item.Jumlah {
+				return fmt.Errorf(
+					"stok obat %s tidak mencukupi",
+					obat.NamaObat,
+				)
+			}
+
+			// Harga snapshot dari database
+			hargaSatuan := obat.Harga
+			subtotal := float64(item.Jumlah) * hargaSatuan
+			totalHarga += subtotal
+
+			detailsEntities = append(
+				detailsEntities,
+				model.DetailPembelian{
+					IDObat:      item.IDObat,
+					Jumlah:      item.Jumlah,
+					HargaSatuan: hargaSatuan,
+					Subtotal:    subtotal,
+				},
+			)
+		}
+
+		// Buat transaksi utama
+		transaksi = model.Transaksi{
+			IDUser:     userID,
+			TotalHarga: totalHarga,
+			Status:     model.StatusTransaksiSelesai,
+		}
+
 		if err := s.repo.Create(tx, &transaksi); err != nil {
 			return err
 		}
 
-		// 2. Simpan Detail & Potong Stok Obat
+		// Simpan detail dan kurangi stok
 		for i := range detailsEntities {
+
 			detailsEntities[i].IDTransaksi = transaksi.IDTransaksi
+
+			// Simpan detail
 			if err := s.repo.CreateDetail(tx, &detailsEntities[i]); err != nil {
 				return err
 			}
 
-			// Potong stok obat
-			err := s.repo.UpdateStokObat(tx, detailsEntities[i].IDObat, detailsEntities[i].Jumlah)
-			if err != nil {
+			if err := s.repo.UpdateStokObat(
+				tx,
+				detailsEntities[i].IDObat,
+				detailsEntities[i].Jumlah,
+			); err != nil {
 				return err
 			}
 		}
@@ -69,7 +116,9 @@ func (s *transactionService) CreateTransaction(req dto.CreateTransactionRequest)
 	})
 
 	if err != nil {
-		return nil, errors.New("gagal memproses transaksi: " + err.Error())
+		return nil, errors.New(
+			"gagal memproses transaksi: " + err.Error(),
+		)
 	}
 
 	transaksi.Details = detailsEntities
@@ -120,4 +169,134 @@ func toTransactionResponse(t model.Transaksi) dto.TransactionResponse {
 		Status:       t.Status,
 		Details:      detailsRes,
 	}
+}
+
+func (s *transactionService) CancelTransaction(id uint, userID uint) error {
+	tx := s.repo.GetDB().Begin()
+
+	if tx.Error != nil {
+		return tx.Error
+	}
+
+	var transaksi model.Transaksi
+
+	err := tx.
+		Preload("Details").
+		Where("id_transaksi = ?", id).
+		First(&transaksi).
+		Error
+
+	if err != nil {
+		tx.Rollback()
+		return errors.New("transaksi tidak ditemukan")
+	}
+
+	// Pastikan transaksi milik kasir yang sedang login
+	if transaksi.IDUser != userID {
+		tx.Rollback()
+		return errors.New("anda tidak memiliki akses untuk membatalkan transaksi ini")
+	}
+
+	// Sudah dibatalkan
+	if transaksi.Status == model.StatusTransaksiDibatalkan {
+		tx.Rollback()
+		return errors.New("transaksi sudah dibatalkan")
+	}
+
+	// Hanya transaksi hari ini
+	now := time.Now()
+
+	if transaksi.TglTransaksi.Year() != now.Year() ||
+		transaksi.TglTransaksi.YearDay() != now.YearDay() {
+		tx.Rollback()
+		return errors.New(
+			"transaksi hanya dapat dibatalkan pada hari yang sama",
+		)
+	}
+
+	// Kembalikan stok
+	for _, detail := range transaksi.Details {
+		if err := s.repo.RestoreStokObat(
+			tx,
+			detail.IDObat,
+			detail.Jumlah,
+		); err != nil {
+			tx.Rollback()
+			return err
+		}
+	}
+
+	// Ubah status menjadi dibatalkan
+	if err := s.repo.UpdateStatus(tx, id, model.StatusTransaksiDibatalkan); err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *transactionService) GetTodayTransactions(userID uint) (*dto.TodayTransactionResponse, error) {
+
+	transactions, err := s.repo.FindTodayByUser(userID)
+	if err != nil {
+		return nil, err
+	}
+
+	totalPenjualan, totalTransaksi, err :=
+		s.repo.GetTodaySummary(userID)
+
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]dto.TransactionResponse, 0, len(transactions))
+
+	for _, transaction := range transactions {
+		result = append(result, toTransactionResponse(*transaction))
+	}
+
+	return &dto.TodayTransactionResponse{
+		Transactions: result,
+		Summary: dto.TransactionSummaryResponse{
+			TotalTransaksi: totalTransaksi,
+			TotalPenjualan: totalPenjualan,
+		},
+	}, nil
+}
+
+func (s *transactionService) GetReceipt(id uint) (*dto.ReceiptResponse, error) {
+
+	transaction, err := s.repo.FindByID(id)
+
+	if err != nil {
+		return nil, errors.New("transaksi tidak ditemukan")
+	}
+
+	if transaction.Status == model.StatusTransaksiDibatalkan {
+		return nil, errors.New("transaksi sudah dibatalkan")
+	}
+
+	details := make([]dto.DetailItemResponse, 0)
+
+	for _, detail := range transaction.Details {
+		details = append(details, dto.DetailItemResponse{
+			IDDetail:    detail.IDDetail,
+			IDObat:      detail.IDObat,
+			Jumlah:      detail.Jumlah,
+			HargaSatuan: detail.HargaSatuan,
+			Subtotal:    detail.Subtotal,
+		})
+	}
+
+	return &dto.ReceiptResponse{
+		IDTransaksi:  transaction.IDTransaksi,
+		TglTransaksi: transaction.TglTransaksi,
+		IDUser:       transaction.IDUser,
+		Details:      details,
+		TotalHarga:   transaction.TotalHarga,
+	}, nil
 }

@@ -19,7 +19,6 @@ http:
         "stok": 50,
         "stok_minimum": 10,
         "keterangan": "Obat penurun panas dan pereda nyeri",
-        "status": "aktif",
         "gambar": "https://example.com/paracetamol.jpg"
       }
   auth: inherit

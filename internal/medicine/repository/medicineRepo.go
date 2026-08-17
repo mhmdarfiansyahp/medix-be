@@ -14,7 +14,7 @@ type MedicineRepository interface {
 	FindByID(id uint) (*model.Obat, error)
 	FindByBarcode(barcode string) (*model.Obat, error)
 	Update(medicine *model.Obat) error
-	UpdateStatus(ctx context.Context, id uint, status string) error
+	UpdateStatus(ctx context.Context, id uint, status int) error
 	Delete(id uint) error
 }
 
@@ -88,7 +88,7 @@ func (r *medicineRepository) Update(medicine *model.Obat) error {
 	return r.db.Save(medicine).Error
 }
 
-func (r *medicineRepository) UpdateStatus(ctx context.Context, id uint, status string) error {
+func (r *medicineRepository) UpdateStatus(ctx context.Context, id uint, status int) error {
 	return r.db.WithContext(ctx).Model(&model.Obat{}).Where("id_obat = ?", id).Update("status", status).Error
 }
 

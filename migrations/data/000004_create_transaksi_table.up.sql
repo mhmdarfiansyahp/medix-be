@@ -3,7 +3,7 @@ CREATE TABLE transaksi (
     id_user       INT NOT NULL REFERENCES users(id_user),
     tgl_transaksi TIMESTAMPTZ NOT NULL DEFAULT now(),
     total_harga   NUMERIC(14,2) NOT NULL CHECK (total_harga >= 0),
-    status        VARCHAR(20) NOT NULL DEFAULT 'selesai' CHECK (status IN ('selesai','dibatalkan')),
+    status         SMALLINT NOT NULL DEFAULT 1 CHECK (status IN (1, 0)),
     created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 

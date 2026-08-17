@@ -10,12 +10,11 @@ http:
     type: json
     data: |-
       {
-        "id_user": 3,
+        "id_user": 1,
         "details": [
           {
             "id_obat": 1,
-            "jumlah": 2,
-            "harga_satuan": 15000.00
+            "jumlah": 2
           }
         ]
       }

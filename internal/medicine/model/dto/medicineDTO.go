@@ -19,7 +19,6 @@ type CreateMedicineRequest struct {
 	Stok          int     `json:"stok" binding:"gte=0"`
 	StokMinimum   int     `json:"stok_minimum"`
 	Keterangan    string  `json:"keterangan"`
-	Status        string  `json:"status" binding:"omitempty,oneof=aktif nonaktif"`
 	Gambar        string  `json:"gambar"`
 }
 
@@ -33,7 +32,7 @@ type UpdateMedicineRequest struct {
 	Stok          int     `json:"stok" binding:"omitempty,gte=0"`
 	StokMinimum   int     `json:"stok_minimum"`
 	Keterangan    string  `json:"keterangan"`
-	Status        string  `json:"status" binding:"omitempty,oneof=aktif nonaktif"`
+	Status        *int    `json:"status" binding:"omitempty,oneof=0 1"`
 	Gambar        string  `json:"gambar"`
 }
 
@@ -49,7 +48,7 @@ type MedicineResponse struct {
 	Stok          int         `json:"stok"`
 	StokMinimum   int         `json:"stok_minimum"`
 	Keterangan    string      `json:"keterangan"`
-	Status        string      `json:"status"`
+	Status        int         `json:"status"`
 	Gambar        string      `json:"gambar"`
 	CreatedAt     time.Time   `json:"created_at"`
 	UpdatedAt     time.Time   `json:"updated_at"`

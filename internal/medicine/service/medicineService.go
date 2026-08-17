@@ -40,11 +40,6 @@ func (s *medicineService) CreateMedicine(req dto.CreateMedicineRequest) (*dto.Me
 		}
 	}
 
-	status := req.Status
-	if status == "" {
-		status = "aktif"
-	}
-
 	stokMin := req.StokMinimum
 	if stokMin == 0 {
 		stokMin = 10
@@ -60,7 +55,7 @@ func (s *medicineService) CreateMedicine(req dto.CreateMedicineRequest) (*dto.Me
 		Stok:          req.Stok,
 		StokMinimum:   stokMin,
 		Keterangan:    req.Keterangan,
-		Status:        status,
+		Status:        1,
 		Gambar:        req.Gambar,
 	}
 
@@ -147,8 +142,12 @@ func (s *medicineService) UpdateMedicine(id uint, req dto.UpdateMedicineRequest)
 	if req.Keterangan != "" {
 		medicine.Keterangan = req.Keterangan
 	}
-	if req.Status != "" {
-		medicine.Status = req.Status
+	if req.Status != nil {
+		if *req.Status != 0 && *req.Status != 1 {
+			return nil, errors.New("status harus 0 atau 1")
+		}
+
+		medicine.Status = *req.Status
 	}
 	if req.Gambar != "" {
 		medicine.Gambar = req.Gambar
@@ -168,12 +167,12 @@ func (s *medicineService) ToggleActiveStatus(ctx context.Context, id uint, isAct
 		return errors.New("obat tidak ditemukan")
 	}
 
-	statusStr := "nonaktif"
+	status := 0
 	if isActive {
-		statusStr = "aktif"
+		status = 1
 	}
 
-	return s.repo.UpdateStatus(ctx, id, statusStr)
+	return s.repo.UpdateStatus(ctx, id, status)
 }
 
 func (s *medicineService) DeleteMedicine(id uint) error {

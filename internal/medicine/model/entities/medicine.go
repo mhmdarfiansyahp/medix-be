@@ -17,7 +17,7 @@ type Obat struct {
 	Stok          int            `gorm:"column:stok;not null;default:0" json:"stok"`
 	StokMinimum   int            `gorm:"column:stok_minimum;default:10" json:"stok_minimum"`
 	Keterangan    string         `gorm:"column:keterangan" json:"keterangan"`
-	Status        string         `gorm:"column:status;size:20;default:aktif" json:"status"`
+	Status        int            `gorm:"column:status;default:1" json:"status"`
 	Gambar        string         `gorm:"column:gambar;size:255" json:"gambar"`
 	CreatedAt     time.Time      `gorm:"column:created_at;autoCreateTime" json:"created_at"`
 	UpdatedAt     time.Time      `gorm:"column:updated_at;autoUpdateTime" json:"updated_at"`
