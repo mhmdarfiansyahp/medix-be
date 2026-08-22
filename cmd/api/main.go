@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"time"
 
 	"medix-be/config"
 	"medix-be/migrations"
@@ -9,9 +10,11 @@ import (
 	// Import modul-modul kamu
 	"medix-be/internal/drug"
 	"medix-be/internal/medicine"
+	"medix-be/internal/report"
 	"medix-be/internal/transaction"
 	"medix-be/internal/user"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 )
@@ -23,6 +26,15 @@ func main() {
 
 	logger := logrus.New()
 	r := gin.Default()
+
+	r.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{"http://localhost:5173"}, // URL Frontend Vite kamu
+		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization"},
+		ExposeHeaders:    []string{"Content-Length"},
+		AllowCredentials: true,
+		MaxAge:           12 * time.Hour,
+	}))
 
 	apiV1 := r.Group("/api/v1")
 
@@ -45,6 +57,12 @@ func main() {
 	})
 
 	transaction.StartApp(&transaction.TransactionHandler{
+		DB:     config.DB,
+		Logger: logger,
+		Router: apiV1,
+	})
+
+	report.StartApp(&report.ReportHandler{
 		DB:     config.DB,
 		Logger: logger,
 		Router: apiV1,

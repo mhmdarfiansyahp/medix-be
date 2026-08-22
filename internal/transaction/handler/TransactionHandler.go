@@ -46,7 +46,6 @@ func (h *TransactionHandler) RegisterRouter() {
 	h.router.GET("/:id", h.GetByID())
 	h.router.PATCH("/:id/cancel", h.Cancel())
 	h.router.GET("/:id/receipt", h.GetReceipt())
-
 }
 
 func (h *TransactionHandler) Create() gin.HandlerFunc {

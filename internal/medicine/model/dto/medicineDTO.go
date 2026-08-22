@@ -2,11 +2,15 @@ package dto
 
 import "time"
 
+// internal/medicine/model/dto/medicine_dto.go
+
 type MedicineFilterParams struct {
+	Page        int    `form:"page"`
+	Limit       int    `form:"limit"`
 	Search      string `form:"search"`
-	JenisObatID uint   `form:"jenis_obat_id"`
-	StatusStok  string `form:"status_stok"`
+	JenisObatID int    `form:"jenis_obat_id"`
 	Status      string `form:"status"`
+	StatusStok  string `form:"status_stok"`
 	Barcode     string `form:"barcode"`
 }
 type CreateMedicineRequest struct {

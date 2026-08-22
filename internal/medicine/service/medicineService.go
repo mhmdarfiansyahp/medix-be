@@ -17,6 +17,9 @@ type MedicineService interface {
 	UpdateMedicine(id uint, req dto.UpdateMedicineRequest) (*dto.MedicineResponse, error)
 	ToggleActiveStatus(ctx context.Context, id uint, isActive bool) error
 	DeleteMedicine(id uint) error
+	GetLowStockDrugs(ctx context.Context) ([]dto.LowStockResponse, error)
+	GetExpiringDrugs(ctx context.Context, days int) ([]dto.ExpiringDrugResponse, error)
+	GetNotificationSummary(ctx context.Context) (*dto.StockNotificationSummary, error)
 }
 
 type medicineService struct {
@@ -182,6 +185,25 @@ func (s *medicineService) DeleteMedicine(id uint) error {
 	}
 
 	return s.repo.Delete(id)
+}
+
+func (s *medicineService) GetLowStockDrugs(ctx context.Context) ([]dto.LowStockResponse, error) {
+	return s.repo.GetLowStock(ctx)
+}
+
+func (s *medicineService) GetExpiringDrugs(ctx context.Context, days int) ([]dto.ExpiringDrugResponse, error) {
+	if days <= 0 {
+		days = 30
+	}
+	return s.repo.GetExpiring(ctx, days)
+}
+
+func (s *medicineService) GetNotificationSummary(ctx context.Context) (*dto.StockNotificationSummary, error) {
+	summary, err := s.repo.GetNotificationSummary(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &summary, nil
 }
 
 // Helper Mapping Response

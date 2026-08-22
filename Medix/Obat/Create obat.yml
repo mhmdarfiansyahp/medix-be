@@ -13,7 +13,7 @@ http:
         "nama_obat": "Paracetamol 500mg",
         "merk_obat": "Kimia Farma",
         "jenis_obat_id": 1,
-        "barcode": "8991234567890",
+        "barcode": "8991234567891",
         "tgl_kadaluarsa": "2027-12-31",
         "harga": 15000,
         "stok": 50,

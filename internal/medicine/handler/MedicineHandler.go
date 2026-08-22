@@ -42,6 +42,10 @@ func StartMedicineHandler(contract *HandlerContract, props *MedicineHandlerProps
 }
 
 func (h *MedicineHandler) RegisterRouter() {
+	h.router.GET("/alerts/low-stock", h.GetLowStock())
+	h.router.GET("/alerts/expiring", h.GetExpiring())
+	h.router.GET("/alerts/summary", h.GetNotificationSummary())
+
 	h.router.POST("", h.CreateMedicine())
 	h.router.GET("", h.GetAllMedicines())
 	h.router.GET("/:id", h.GetMedicineByID())
@@ -200,5 +204,59 @@ func (h *MedicineHandler) DeleteMedicine() gin.HandlerFunc {
 		}
 
 		c.JSON(http.StatusOK, gin.H{"message": "Obat berhasil dihapus"})
+	}
+}
+
+// GET /medicines/alerts/low-stock (US-13)
+func (h *MedicineHandler) GetLowStock() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		res, err := h.medicineService.GetLowStockDrugs(c.Request.Context())
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"message": "Berhasil mengambil daftar obat dengan stok menipis",
+			"data":    res,
+		})
+	}
+}
+
+// GET /medicines/alerts/expiring?days=30 (US-14)
+func (h *MedicineHandler) GetExpiring() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		daysParam := c.DefaultQuery("days", "30")
+		days, err := strconv.Atoi(daysParam)
+		if err != nil {
+			days = 30
+		}
+
+		res, err := h.medicineService.GetExpiringDrugs(c.Request.Context(), days)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"message": "Berhasil mengambil daftar obat mendekati kadaluarsa",
+			"data":    res,
+		})
+	}
+}
+
+// GET /medicines/alerts/summary
+func (h *MedicineHandler) GetNotificationSummary() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		res, err := h.medicineService.GetNotificationSummary(c.Request.Context())
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"message": "Berhasil mengambil ringkasan notifikasi stok",
+			"data":    res,
+		})
 	}
 }
