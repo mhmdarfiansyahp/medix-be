@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"medix-be/internal/medicine/model/dto"
-	"medix-be/internal/medicine/model/entities"
+	model "medix-be/internal/medicine/model/entities"
 	"time"
 
 	"gorm.io/gorm"
@@ -55,9 +55,10 @@ func (r *medicineRepository) FindAll(ctx context.Context, params dto.MedicineFil
 	}
 
 	if params.Status != "" {
-		if params.Status == "1" || params.Status == "active" || params.Status == "true" {
+		switch params.Status {
+		case "1", "active", "true":
 			query = query.Where("status = 1")
-		} else if params.Status == "0" || params.Status == "inactive" || params.Status == "false" {
+		case "0", "inactive", "false":
 			query = query.Where("status = 0")
 		}
 	}
@@ -105,7 +106,9 @@ func (r *medicineRepository) FindByBarcode(barcode string) (*model.Obat, error) 
 }
 
 func (r *medicineRepository) Update(medicine *model.Obat) error {
-	return r.db.Save(medicine).Error
+	return r.db.Model(&model.Obat{}).
+		Where("id_obat = ?", medicine.IDObat).
+		Updates(medicine).Error
 }
 
 func (r *medicineRepository) UpdateStatus(ctx context.Context, id uint, status int) error {

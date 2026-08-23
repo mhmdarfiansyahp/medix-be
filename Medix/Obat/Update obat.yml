@@ -5,14 +5,16 @@ info:
 
 http:
   method: PUT
-  url: "{{baseUrl}}/api/v1/medicines/2"
+  url: "{{baseUrl}}/api/v1/medicines/1"
   body:
     type: json
     data: |-
       {
         "nama_obat": "Paracetamol Extra 500mg",
         "harga": 18000,
-        "stok": 45
+        "stok": 45,
+        "jenis_obat_id": 2,
+        "barcode": "8991234567892"
       }
   auth: inherit
 

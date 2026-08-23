@@ -160,6 +160,11 @@ func (s *medicineService) UpdateMedicine(id uint, req dto.UpdateMedicineRequest)
 		return nil, err
 	}
 
+	medicine, err = s.repo.FindByID(id)
+	if err != nil {
+		return nil, err
+	}
+
 	res := toMedicineResponse(*medicine)
 	return &res, nil
 }

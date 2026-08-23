@@ -5,12 +5,12 @@ info:
 
 http:
   method: PATCH
-  url: "{{baseUrl}}/api/v1/medicines/2/status"
+  url: "{{baseUrl}}/api/v1/medicines/1/status"
   body:
     type: json
     data: |-
       {
-        "is_active": false
+        "is_active": true
       }
   auth: inherit
 
