@@ -2,15 +2,17 @@ package service
 
 import (
 	"errors"
-	"golang.org/x/crypto/bcrypt"
+	"math"
 	"medix-be/internal/user/model/dto"
-	"medix-be/internal/user/model/entities"
+	model "medix-be/internal/user/model/entities"
 	"medix-be/internal/user/repository"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 type UserService interface {
 	CreateUser(req dto.CreateUserRequest) (*dto.UserResponse, error)
-	GetAllUsers() ([]dto.UserResponse, error)
+	GetAllUsers(page int, limit int, search string, role string, status string) (*dto.UserListResponse, error)
 	GetUserByID(id uint) (*dto.UserResponse, error)
 	UpdateUser(id uint, req dto.UpdateUserRequest) (*dto.UserResponse, error)
 	DeleteUser(id uint) error
@@ -48,17 +50,38 @@ func (s *userService) CreateUser(req dto.CreateUserRequest) (*dto.UserResponse, 
 	return &res, nil
 }
 
-func (s *userService) GetAllUsers() ([]dto.UserResponse, error) {
-	users, err := s.repo.FindAll()
+func (s *userService) GetAllUsers(page int, limit int, search string, role string, status string) (*dto.UserListResponse, error) {
+
+	users, total, err := s.repo.FindAll(
+		page,
+		limit,
+		search,
+		role,
+		status,
+	)
+
 	if err != nil {
 		return nil, err
 	}
 
-	var responses []dto.UserResponse
-	for _, u := range users {
-		responses = append(responses, toUserResponse(u))
+	responses := make([]*dto.UserResponse, 0, len(users))
+
+	for _, user := range users {
+		res := toUserResponse(*user)
+		responses = append(responses, &res)
 	}
-	return responses, nil
+
+	totalPages := int(math.Ceil(float64(total) / float64(limit)))
+
+	return &dto.UserListResponse{
+		Data: responses,
+		Pagination: dto.PaginationResponse{
+			CurrentPage:  page,
+			TotalPages:   totalPages,
+			TotalItems:   total,
+			ItemsPerPage: limit,
+		},
+	}, nil
 }
 
 func (s *userService) GetUserByID(id uint) (*dto.UserResponse, error) {

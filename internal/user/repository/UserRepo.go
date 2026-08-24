@@ -1,13 +1,13 @@
 package repository
 
 import (
-	"medix-be/internal/user/model/entities"
 	"gorm.io/gorm"
+	"medix-be/internal/user/model/entities"
 )
 
 type UserRepository interface {
 	Create(user *model.User) error
-	FindAll() ([]model.User, error)
+	FindAll(page int, limit int, search string, role string, status string) ([]*model.User, int64, error)
 	FindByID(id uint) (*model.User, error)
 	Update(user *model.User) error
 	Delete(id uint) error
@@ -25,10 +25,42 @@ func (r *userRepository) Create(user *model.User) error {
 	return r.db.Create(user).Error
 }
 
-func (r *userRepository) FindAll() ([]model.User, error) {
-	var users []model.User
-	err := r.db.Find(&users).Error
-	return users, err
+func (r *userRepository) FindAll(page int, limit int, search string, role string, status string) ([]*model.User, int64, error) {
+
+	var users []*model.User
+	var total int64
+	query := r.db.Model(&model.User{})
+
+	if search != "" {
+		searchValue := "%" + search + "%"
+
+		query = query.Where(
+			"nama_user ILIKE ? OR username ILIKE ?",
+			searchValue,
+			searchValue,
+		)
+	}
+
+	if role != "" {
+		query = query.Where("role = ?", role)
+	}
+
+	if status != "" {
+		query = query.Where("status = ?", status)
+	}
+
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	offset := (page - 1) * limit
+
+	err := query.
+		Offset(offset).
+		Limit(limit).
+		Find(&users).Error
+
+	return users, total, err
 }
 
 func (r *userRepository) FindByID(id uint) (*model.User, error) {

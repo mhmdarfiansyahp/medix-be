@@ -5,7 +5,7 @@ CREATE TABLE users (
     role       VARCHAR(20) NOT NULL CHECK (role IN ('admin','kasir','owner')),
     username   VARCHAR(50) NOT NULL UNIQUE,
     password   VARCHAR(255) NOT NULL,
-    status     VARCHAR(20) NOT NULL DEFAULT 'aktif' CHECK (status IN ('aktif','nonaktif')),
+    status     SMALLINT NOT NULL DEFAULT 1 CHECK (status IN (1, 0)),
     foto       VARCHAR(255),
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()

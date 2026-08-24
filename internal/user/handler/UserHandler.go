@@ -71,15 +71,41 @@ func (h *UserHandler) CreateUser() gin.HandlerFunc {
 
 func (h *UserHandler) GetAllUsers() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		res, err := h.userService.GetAllUsers()
+
+		page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+		limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
+
+		if page < 1 {
+			page = 1
+		}
+
+		if limit < 1 {
+			limit = 10
+		}
+
+		search := c.Query("search")
+		role := c.Query("role")
+		status := c.Query("status")
+
+		res, err := h.userService.GetAllUsers(
+			page,
+			limit,
+			search,
+			role,
+			status,
+		)
+
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": err.Error(),
+			})
 			return
 		}
 
 		c.JSON(http.StatusOK, gin.H{
-			"message": "Users retrieved successfully",
-			"data":    res,
+			"message":    "Users retrieved successfully",
+			"data":       res.Data,
+			"pagination": res.Pagination,
 		})
 	}
 }
