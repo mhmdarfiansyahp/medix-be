@@ -34,3 +34,12 @@ Pastikan kamu sudah menginstal:
 ```bash
 git clone [https://github.com/mhmdarfiansyahp/medix-be.git](https://github.com/mhmdarfiansyahp/medix-be.git)
 cd medix-be
+
+# Run the application
+make run
+
+# Build binary
+make build
+
+# Run database migrations
+make migrate-up
