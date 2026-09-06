@@ -6,28 +6,37 @@ import (
 	"medix-be/internal/user/model/dto"
 	model "medix-be/internal/user/model/entities"
 	"medix-be/internal/user/repository"
+	"time"
 
+	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
 )
 
 type UserService interface {
 	CreateUser(req dto.CreateUserRequest) (*dto.UserResponse, error)
+	Login(req *dto.LoginRequest) (*dto.LoginResponse, error)
+
 	GetAllUsers(page int, limit int, search string, role string, status string) (*dto.UserListResponse, error)
 	GetUserByID(id uint) (*dto.UserResponse, error)
 	UpdateUser(id uint, req dto.UpdateUserRequest) (*dto.UserResponse, error)
 	DeleteUser(id uint) error
+	GetProfile(id uint) (*dto.UserResponse, error)
+	UpdateProfile(id uint, req *dto.UpdateUserRequest) (*dto.UserResponse, error)
 }
 
 type userService struct {
-	repo repository.UserRepository
+	repo      repository.UserRepository
+	jwtSecret string
 }
 
-func NewUserService(repo repository.UserRepository) UserService {
-	return &userService{repo: repo}
+func NewUserService(repo repository.UserRepository, jwtSecret string) UserService {
+	return &userService{repo: repo, jwtSecret: jwtSecret}
 }
 
 func (s *userService) CreateUser(req dto.CreateUserRequest) (*dto.UserResponse, error) {
+
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+
 	if err != nil {
 		return nil, errors.New("gagal memproses password")
 	}
@@ -121,7 +130,7 @@ func (s *userService) UpdateUser(id uint, req dto.UpdateUserRequest) (*dto.UserR
 		}
 		user.Password = string(hashedPassword)
 	}
-	if req.Status != "" {
+	if req.Status != 0 {
 		user.Status = req.Status
 	}
 	if req.Foto != "" {
@@ -143,6 +152,94 @@ func (s *userService) DeleteUser(id uint) error {
 	}
 
 	return s.repo.Delete(id)
+}
+
+func (s *userService) GetProfile(id uint) (*dto.UserResponse, error) {
+
+	user, err := s.repo.FindByID(id)
+
+	if err != nil {
+		return nil, errors.New("profile tidak ditemukan")
+	}
+
+	res := toUserResponse(*user)
+	return &res, nil
+}
+
+func (s *userService) Login(req *dto.LoginRequest) (*dto.LoginResponse, error) {
+
+	user, err := s.repo.FindByUsername(*req.Username)
+	if err != nil {
+		return nil, errors.New("username atau password salah")
+	}
+
+	if user.Status == 0 {
+		return nil, errors.New("user tidak aktif")
+	}
+
+	err = bcrypt.CompareHashAndPassword(
+		[]byte(user.Password),
+		[]byte(*req.Password),
+	)
+	if err != nil {
+		return nil, errors.New("username atau password salah")
+	}
+
+	token := jwt.NewWithClaims(
+		jwt.SigningMethodHS256,
+		jwt.MapClaims{
+			"user_id":  user.IDUser,
+			"username": user.Username,
+			"role":     user.Role,
+			"exp":      time.Now().Add(8 * time.Hour).Unix(),
+			"iat":      time.Now().Unix(),
+		},
+	)
+
+	tokenString, err := token.SignedString([]byte(s.jwtSecret))
+	if err != nil {
+		return nil, errors.New("gagal membuat token")
+	}
+
+	userResponse := toUserResponse(*user)
+
+	return &dto.LoginResponse{
+		Token: &tokenString,
+		User:  &userResponse,
+	}, nil
+}
+
+func (s *userService) UpdateProfile(id uint, req *dto.UpdateUserRequest) (*dto.UserResponse, error) {
+
+	user, err := s.repo.FindByID(id)
+
+	if err != nil {
+		return nil, errors.New("profile tidak ditemukan")
+	}
+
+	if req.NamaUser != "" {
+		user.NamaUser = req.NamaUser
+	}
+
+	if req.NoTelp != "" {
+		user.NoTelp = req.NoTelp
+	}
+
+	if req.Username != "" {
+		user.Username = req.Username
+	}
+
+	if req.Foto != "" {
+		user.Foto = req.Foto
+	}
+
+	if err := s.repo.Update(user); err != nil {
+		return nil, err
+	}
+
+	res := toUserResponse(*user)
+
+	return &res, nil
 }
 
 func toUserResponse(user model.User) dto.UserResponse {

@@ -5,6 +5,7 @@ go 1.26.5
 require (
 	github.com/gin-contrib/cors v1.7.7
 	github.com/gin-gonic/gin v1.12.0
+	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/golang-migrate/migrate/v4 v4.19.1
 	github.com/sirupsen/logrus v1.9.4
 	github.com/spf13/viper v1.21.0

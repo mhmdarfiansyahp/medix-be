@@ -7,7 +7,6 @@ import (
 	"medix-be/config"
 	"medix-be/migrations"
 
-	// Import modul-modul kamu
 	"medix-be/internal/drug"
 	"medix-be/internal/medicine"
 	"medix-be/internal/report"

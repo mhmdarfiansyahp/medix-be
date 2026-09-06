@@ -6,7 +6,7 @@ type UserResponse struct {
 	NoTelp   string `json:"no_telp"`
 	Role     string `json:"role"`
 	Username string `json:"username"`
-	Status   string `json:"status"`
+	Status   int    `json:"status"`
 	Foto     string `json:"foto"`
 }
 
@@ -16,7 +16,7 @@ type CreateUserRequest struct {
 	Role     string `json:"role" binding:"required,oneof=admin kasir owner"`
 	Username string `json:"username" binding:"required,max=50"`
 	Password string `json:"password" binding:"required,min=6"`
-	Status   string `json:"status" binding:"omitempty,oneof=aktif nonaktif"`
+	Status   int    `json:"status" binding:"omitempty,oneof=0 1"`
 	Foto     string `json:"foto"`
 }
 
@@ -26,7 +26,7 @@ type UpdateUserRequest struct {
 	Role     string `json:"role" binding:"omitempty,oneof=admin kasir owner"`
 	Username string `json:"username" binding:"omitempty,max=50"`
 	Password string `json:"password" binding:"omitempty,min=6"`
-	Status   string `json:"status" binding:"omitempty,oneof=aktif nonaktif"`
+	Status   int    `json:"status" binding:"omitempty,oneof=0 1"`
 	Foto     string `json:"foto"`
 }
 
@@ -35,7 +35,7 @@ type UserFilterRequest struct {
 	Limit  int    `form:"limit"`
 	Search string `form:"search"`
 	Role   string `form:"role"`
-	Status string `form:"status"`
+	Status int    `form:"status"`
 }
 
 type PaginationResponse struct {
@@ -48,4 +48,14 @@ type PaginationResponse struct {
 type UserListResponse struct {
 	Data       []*UserResponse    `json:"data"`
 	Pagination PaginationResponse `json:"pagination"`
+}
+
+type LoginRequest struct {
+	Username *string `json:"username" binding:"required"`
+	Password *string `json:"password" binding:"required"`
+}
+
+type LoginResponse struct {
+	Token *string       `json:"token"`
+	User  *UserResponse `json:"user"`
 }

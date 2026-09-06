@@ -4,6 +4,7 @@ import (
 	"medix-be/internal/user/handler"
 	"medix-be/internal/user/repository"
 	"medix-be/internal/user/service"
+	"os"
 
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
@@ -20,7 +21,12 @@ func StartApp(cfg *UserHandler) {
 	cfg.Logger.Info("User module starting...")
 
 	userRepo := repository.NewUserRepository(cfg.DB)
-	userSvc := service.NewUserService(userRepo)
+	jwtSecret := os.Getenv("JWT_SECRET")
+
+	userSvc := service.NewUserService(
+		userRepo,
+		jwtSecret,
+	)
 	handlerContract := &handler.HandlerContract{
 		Logger: cfg.Logger,
 		Router: cfg.Router,

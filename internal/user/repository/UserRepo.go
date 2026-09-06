@@ -9,6 +9,7 @@ type UserRepository interface {
 	Create(user *model.User) error
 	FindAll(page int, limit int, search string, role string, status string) ([]*model.User, int64, error)
 	FindByID(id uint) (*model.User, error)
+	FindByUsername(username string) (*model.User, error)
 	Update(user *model.User) error
 	Delete(id uint) error
 }
@@ -29,6 +30,7 @@ func (r *userRepository) FindAll(page int, limit int, search string, role string
 
 	var users []*model.User
 	var total int64
+
 	query := r.db.Model(&model.User{})
 
 	if search != "" {
@@ -65,8 +67,30 @@ func (r *userRepository) FindAll(page int, limit int, search string, role string
 
 func (r *userRepository) FindByID(id uint) (*model.User, error) {
 	var user model.User
-	err := r.db.First(&user, id).Error
-	return &user, err
+
+	err := r.db.
+		Where("id_user = ?", id).
+		First(&user).Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &user, nil
+}
+
+func (r *userRepository) FindByUsername(username string) (*model.User, error) {
+	var user model.User
+
+	err := r.db.
+		Where("username = ?", username).
+		First(&user).Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &user, nil
 }
 
 func (r *userRepository) Update(user *model.User) error {
