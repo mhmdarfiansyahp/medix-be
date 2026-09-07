@@ -86,7 +86,7 @@ func (s *medicineService) GetAllMedicines(ctx context.Context, params dto.Medici
 func (s *medicineService) GetMedicineByID(id uint) (*dto.MedicineResponse, error) {
 	medicine, err := s.repo.FindByID(id)
 	if err != nil {
-		return nil, errors.New("obat tidak ditemukan")
+		return nil, errors.New("medicine not found")
 	}
 
 	res := toMedicineResponse(*medicine)
@@ -96,7 +96,7 @@ func (s *medicineService) GetMedicineByID(id uint) (*dto.MedicineResponse, error
 func (s *medicineService) GetMedicineByBarcode(ctx context.Context, barcode string) (*dto.MedicineResponse, error) {
 	medicine, err := s.repo.FindByBarcode(barcode)
 	if err != nil {
-		return nil, errors.New("obat dengan barcode tersebut tidak ditemukan")
+		return nil, errors.New("medicine with that barcode not found")
 	}
 
 	res := toMedicineResponse(*medicine)
@@ -106,7 +106,7 @@ func (s *medicineService) GetMedicineByBarcode(ctx context.Context, barcode stri
 func (s *medicineService) UpdateMedicine(id uint, req dto.UpdateMedicineRequest) (*dto.MedicineResponse, error) {
 	medicine, err := s.repo.FindByID(id)
 	if err != nil {
-		return nil, errors.New("obat tidak ditemukan")
+		return nil, errors.New("medicine not found")
 	}
 
 	if req.Barcode != nil && *req.Barcode != "" {
@@ -129,7 +129,7 @@ func (s *medicineService) UpdateMedicine(id uint, req dto.UpdateMedicineRequest)
 	if req.TglKadaluarsa != "" {
 		parsedDate, err := time.Parse("2006-01-02", req.TglKadaluarsa)
 		if err != nil {
-			return nil, errors.New("format tgl_kadaluarsa harus YYYY-MM-DD")
+		return nil, errors.New("tgl_kadaluarsa format must be YYYY-MM-DD")
 		}
 		medicine.TglKadaluarsa = parsedDate
 	}
@@ -147,7 +147,7 @@ func (s *medicineService) UpdateMedicine(id uint, req dto.UpdateMedicineRequest)
 	}
 	if req.Status != nil {
 		if *req.Status != 0 && *req.Status != 1 {
-			return nil, errors.New("status harus 0 atau 1")
+			return nil, errors.New("status must be 0 or 1")
 		}
 
 		medicine.Status = *req.Status
@@ -189,7 +189,7 @@ func (s *medicineService) DeleteMedicine(id uint) error {
 		return errors.New("obat tidak ditemukan")
 	}
 
-	// Soft delete: deaktivasi obat, riwayat transaksi tetap terjaga
+	// Soft delete: deactivate medicine, transaction history preserved
 	return s.repo.UpdateStatus(context.Background(), id, 0)
 }
 

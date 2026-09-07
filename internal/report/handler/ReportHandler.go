@@ -47,6 +47,7 @@ func (h *ReportHandler) RegisterRouter() {
 	h.router.GET("/sales-summary", h.GetSalesSummary()) // US-15
 	h.router.GET("/drug-ranking", h.GetDrugRanking())   // US-16
 	h.router.GET("/export/excel", h.ExportExcel())      // US-17
+	h.router.GET("/export/pdf", h.ExportPDF())          // US-17
 }
 
 // GET /reports/sales-summary?start_date=2026-01-01&end_date=2026-01-31&group_by=daily
@@ -64,7 +65,7 @@ func (h *ReportHandler) GetSalesSummary() gin.HandlerFunc {
 			return
 		}
 
-		response.Success(c, http.StatusOK, "Ringkasan penjualan berhasil diambil", res)
+		response.Success(c, http.StatusOK, "Sales summary retrieved successfully", res)
 	}
 }
 
@@ -83,7 +84,7 @@ func (h *ReportHandler) GetDrugRanking() gin.HandlerFunc {
 			return
 		}
 
-		response.Success(c, http.StatusOK, "Peringkat obat berhasil diambil", res)
+		response.Success(c, http.StatusOK, "Drug ranking retrieved successfully", res)
 	}
 }
 
@@ -102,9 +103,31 @@ func (h *ReportHandler) ExportExcel() gin.HandlerFunc {
 			return
 		}
 
-		fileName := fmt.Sprintf("Laporan_Penjualan_%s.xlsx", time.Now().Format("20060102_150405"))
+		fileName := fmt.Sprintf("Sales_Report_%s.xlsx", time.Now().Format("20060102_150405"))
 		c.Header("Content-Description", "File Transfer")
 		c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%s", fileName))
 		c.Data(http.StatusOK, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", buf.Bytes())
+	}
+}
+
+// GET /reports/export/pdf?start_date=2026-01-01&end_date=2026-01-31
+func (h *ReportHandler) ExportPDF() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var params dto.ReportFilterParams
+		if err := c.ShouldBindQuery(&params); err != nil {
+			response.Error(c, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		buf, err := h.reportService.ExportToPDF(c.Request.Context(), params)
+		if err != nil {
+			response.Error(c, http.StatusInternalServerError, err.Error())
+			return
+		}
+
+		fileName := fmt.Sprintf("Sales_Report_%s.pdf", time.Now().Format("20060102_150405"))
+		c.Header("Content-Description", "File Transfer")
+		c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%s", fileName))
+		c.Data(http.StatusOK, "application/pdf", buf.Bytes())
 	}
 }

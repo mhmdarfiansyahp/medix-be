@@ -69,7 +69,7 @@ func (h *MedicineHandler) CreateMedicine() gin.HandlerFunc {
 		res, err := h.medicineService.CreateMedicine(payload)
 		if err != nil {
 			if strings.Contains(err.Error(), "barcode") &&
-				(strings.Contains(err.Error(), "duplikat") || strings.Contains(err.Error(), "sudah digunakan") || strings.Contains(err.Error(), "23505")) {
+				(strings.Contains(err.Error(), "already used") || strings.Contains(err.Error(), "23505")) {
 				response.Error(c, http.StatusConflict, err.Error())
 				return
 			}
@@ -77,7 +77,7 @@ func (h *MedicineHandler) CreateMedicine() gin.HandlerFunc {
 			return
 		}
 
-		response.Success(c, http.StatusCreated, "Obat berhasil ditambahkan", res)
+		response.Success(c, http.StatusCreated, "Medicine added successfully", res)
 	}
 }
 
@@ -96,7 +96,7 @@ func (h *MedicineHandler) GetAllMedicines() gin.HandlerFunc {
 			return
 		}
 
-		response.Success(c, http.StatusOK, "Obat berhasil diambil", res)
+		response.Success(c, http.StatusOK, "Medicine retrieved successfully", res)
 	}
 }
 
@@ -105,7 +105,7 @@ func (h *MedicineHandler) GetMedicineByID() gin.HandlerFunc {
 		idParam := c.Param("id")
 		id, err := strconv.ParseUint(idParam, 10, 32)
 		if err != nil {
-			response.Error(c, http.StatusBadRequest, "ID obat tidak valid")
+			response.Error(c, http.StatusBadRequest, "invalid medicine ID")
 			return
 		}
 
@@ -115,7 +115,7 @@ func (h *MedicineHandler) GetMedicineByID() gin.HandlerFunc {
 			return
 		}
 
-		response.Success(c, http.StatusOK, "Obat berhasil diambil", res)
+		response.Success(c, http.StatusOK, "Medicine retrieved successfully", res)
 	}
 }
 
@@ -123,7 +123,7 @@ func (h *MedicineHandler) GetMedicineByBarcode() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		barcode := c.Param("barcode")
 		if barcode == "" {
-			response.Error(c, http.StatusBadRequest, "Barcode tidak boleh kosong")
+			response.Error(c, http.StatusBadRequest, "barcode cannot be empty")
 			return
 		}
 
@@ -133,7 +133,7 @@ func (h *MedicineHandler) GetMedicineByBarcode() gin.HandlerFunc {
 			return
 		}
 
-		response.Success(c, http.StatusOK, "Obat berhasil diambil", res)
+		response.Success(c, http.StatusOK, "Medicine retrieved successfully", res)
 	}
 }
 
@@ -142,7 +142,7 @@ func (h *MedicineHandler) UpdateMedicine() gin.HandlerFunc {
 		idParam := c.Param("id")
 		id, err := strconv.ParseUint(idParam, 10, 32)
 		if err != nil {
-			response.Error(c, http.StatusBadRequest, "ID obat tidak valid")
+			response.Error(c, http.StatusBadRequest, "invalid medicine ID")
 			return
 		}
 
@@ -155,7 +155,7 @@ func (h *MedicineHandler) UpdateMedicine() gin.HandlerFunc {
 		res, err := h.medicineService.UpdateMedicine(uint(id), payload)
 		if err != nil {
 			if strings.Contains(err.Error(), "barcode") &&
-				(strings.Contains(err.Error(), "sudah digunakan") || strings.Contains(err.Error(), "23505")) {
+				(strings.Contains(err.Error(), "already used") || strings.Contains(err.Error(), "23505")) {
 				response.Error(c, http.StatusConflict, err.Error())
 				return
 			}
@@ -163,7 +163,7 @@ func (h *MedicineHandler) UpdateMedicine() gin.HandlerFunc {
 			return
 		}
 
-		response.Success(c, http.StatusOK, "Obat berhasil diperbarui", res)
+		response.Success(c, http.StatusOK, "Medicine updated successfully", res)
 	}
 }
 
@@ -172,7 +172,7 @@ func (h *MedicineHandler) ToggleActiveStatus() gin.HandlerFunc {
 		idParam := c.Param("id")
 		id, err := strconv.ParseUint(idParam, 10, 32)
 		if err != nil {
-			response.Error(c, http.StatusBadRequest, "ID obat tidak valid")
+			response.Error(c, http.StatusBadRequest, "invalid medicine ID")
 			return
 		}
 
@@ -191,7 +191,7 @@ func (h *MedicineHandler) ToggleActiveStatus() gin.HandlerFunc {
 			return
 		}
 
-		response.Success(c, http.StatusOK, "Status obat berhasil diperbarui", nil)
+		response.Success(c, http.StatusOK, "Medicine status updated successfully", nil)
 	}
 }
 
@@ -200,7 +200,7 @@ func (h *MedicineHandler) DeleteMedicine() gin.HandlerFunc {
 		idParam := c.Param("id")
 		id, err := strconv.ParseUint(idParam, 10, 32)
 		if err != nil {
-			response.Error(c, http.StatusBadRequest, "ID obat tidak valid")
+			response.Error(c, http.StatusBadRequest, "invalid medicine ID")
 			return
 		}
 
@@ -209,7 +209,7 @@ func (h *MedicineHandler) DeleteMedicine() gin.HandlerFunc {
 			return
 		}
 
-		response.Success(c, http.StatusOK, "Obat berhasil dihapus", nil)
+		response.Success(c, http.StatusOK, "Medicine deleted successfully", nil)
 	}
 }
 
@@ -222,7 +222,7 @@ func (h *MedicineHandler) GetLowStock() gin.HandlerFunc {
 			return
 		}
 
-		response.Success(c, http.StatusOK, "Berhasil mengambil daftar obat dengan stok menipis", res)
+		response.Success(c, http.StatusOK, "Successfully retrieved list of low stock medicines", res)
 	}
 }
 
@@ -241,7 +241,7 @@ func (h *MedicineHandler) GetExpiring() gin.HandlerFunc {
 			return
 		}
 
-		response.Success(c, http.StatusOK, "Berhasil mengambil daftar obat mendekati kadaluarsa", res)
+		response.Success(c, http.StatusOK, "Successfully retrieved list of expiring medicines", res)
 	}
 }
 
@@ -254,6 +254,6 @@ func (h *MedicineHandler) GetNotificationSummary() gin.HandlerFunc {
 			return
 		}
 
-		response.Success(c, http.StatusOK, "Berhasil mengambil ringkasan notifikasi stok", res)
+		response.Success(c, http.StatusOK, "Successfully retrieved stock notification summary", res)
 	}
 }

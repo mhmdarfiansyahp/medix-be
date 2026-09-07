@@ -32,12 +32,12 @@ func RunMigrations() {
 		dsn,
 	)
 	if err != nil {
-		log.Fatalf("Gagal inisialisasi instance migrasi: %v", err)
+		log.Fatalf("Failed to initialize migration instance: %v", err)
 	}
 
 	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
-		log.Fatalf("Gagal menjalankan migrasi UP: %v", err)
+		log.Fatalf("Failed to run UP migration: %v", err)
 	}
 
-	fmt.Println("Migrasi database berhasil dijalankan!")
+	fmt.Println("Database migration completed successfully!")
 }

@@ -52,7 +52,7 @@ func (s *typeDrugService) GetAllTypeDrugs() ([]dto.TypeDrugResponse, error) {
 func (s *typeDrugService) GetTypeDrugByID(id uint) (*dto.TypeDrugResponse, error) {
 	typeDrug, err := s.repo.FindByID(id)
 	if err != nil {
-		return nil, errors.New("jenis obat tidak ditemukan")
+		return nil, errors.New("drug type not found")
 	}
 
 	res := toTypeDrugResponse(*typeDrug)
@@ -62,7 +62,7 @@ func (s *typeDrugService) GetTypeDrugByID(id uint) (*dto.TypeDrugResponse, error
 func (s *typeDrugService) UpdateTypeDrug(id uint, req dto.UpdateTypeDrugRequest) (*dto.TypeDrugResponse, error) {
 	typeDrug, err := s.repo.FindByID(id)
 	if err != nil {
-		return nil, errors.New("jenis obat tidak ditemukan")
+		return nil, errors.New("drug type not found")
 	}
 
 	if req.NamaJenis != "" {
@@ -86,7 +86,7 @@ func (s *typeDrugService) DeleteTypeDrug(id uint) error {
 	return s.repo.Delete(id)
 }
 
-// Helper untuk format mapping response
+// Helper to format mapping response
 func toTypeDrugResponse(td model.TypeDrug) dto.TypeDrugResponse {
 	return dto.TypeDrugResponse{
 		IDJenis:   td.IDJenis,

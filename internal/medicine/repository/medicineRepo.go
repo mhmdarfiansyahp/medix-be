@@ -135,7 +135,7 @@ func (r *medicineRepository) GetLowStock(ctx context.Context) ([]dto.LowStockRes
 	return results, err
 }
 
-// US-14: Mengambil daftar obat yang mendekati tanggal kadaluarsa (misal 30 hari ke depan)
+// US-14: Fetch list of medicines approaching expiration (e.g. 30 days ahead)
 func (r *medicineRepository) GetExpiring(ctx context.Context, days int) ([]dto.ExpiringDrugResponse, error) {
 	var results []dto.ExpiringDrugResponse
 	targetDate := time.Now().AddDate(0, 0, days)

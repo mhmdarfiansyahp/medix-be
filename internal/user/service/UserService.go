@@ -6,6 +6,7 @@ import (
 	"medix-be/internal/user/model/dto"
 	model "medix-be/internal/user/model/entities"
 	"medix-be/internal/user/repository"
+	"os"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -21,7 +22,8 @@ type UserService interface {
 	UpdateUser(id uint, req dto.UpdateUserRequest) (*dto.UserResponse, error)
 	DeleteUser(id uint) error
 	GetProfile(id uint) (*dto.UserResponse, error)
-	UpdateProfile(id uint, req *dto.UpdateUserRequest) (*dto.UserResponse, error)
+	UpdateProfile(id uint, req *dto.UpdateProfileRequest) (*dto.UserResponse, error)
+	UpdateProfilePhoto(id uint, fotoPath string) (*dto.UserResponse, error)
 }
 
 type userService struct {
@@ -38,7 +40,7 @@ func (s *userService) CreateUser(req dto.CreateUserRequest) (*dto.UserResponse, 
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 
 	if err != nil {
-		return nil, errors.New("gagal memproses password")
+		return nil, errors.New("failed to process password")
 	}
 
 	status := req.Status
@@ -101,7 +103,7 @@ func (s *userService) GetAllUsers(page int, limit int, search string, role strin
 func (s *userService) GetUserByID(id uint) (*dto.UserResponse, error) {
 	user, err := s.repo.FindByID(id)
 	if err != nil {
-		return nil, errors.New("user tidak ditemukan")
+		return nil, errors.New("user not found")
 	}
 
 	res := toUserResponse(*user)
@@ -113,7 +115,7 @@ func (s *userService) UpdateUser(id uint, req dto.UpdateUserRequest) (*dto.UserR
 	user, err := s.repo.FindByID(id)
 
 	if err != nil {
-		return nil, errors.New("user tidak ditemukan")
+		return nil, errors.New("user not found")
 	}
 
 	if req.NamaUser != "" {
@@ -131,7 +133,7 @@ func (s *userService) UpdateUser(id uint, req dto.UpdateUserRequest) (*dto.UserR
 	if req.Password != "" {
 		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 		if err != nil {
-			return nil, errors.New("gagal memproses password baru")
+			return nil, errors.New("failed to process new password")
 		}
 		user.Password = string(hashedPassword)
 	}
@@ -164,7 +166,7 @@ func (s *userService) GetProfile(id uint) (*dto.UserResponse, error) {
 	user, err := s.repo.FindByID(id)
 
 	if err != nil {
-		return nil, errors.New("profile tidak ditemukan")
+		return nil, errors.New("profile not found")
 	}
 
 	res := toUserResponse(*user)
@@ -175,11 +177,11 @@ func (s *userService) Login(req *dto.LoginRequest) (*dto.LoginResponse, error) {
 
 	user, err := s.repo.FindByUsername(*req.Username)
 	if err != nil {
-		return nil, errors.New("username atau password salah")
+		return nil, errors.New("username or password incorrect")
 	}
 
 	if user.Status == 0 {
-		return nil, errors.New("user tidak aktif")
+		return nil, errors.New("user is inactive")
 	}
 
 	err = bcrypt.CompareHashAndPassword(
@@ -187,7 +189,7 @@ func (s *userService) Login(req *dto.LoginRequest) (*dto.LoginResponse, error) {
 		[]byte(*req.Password),
 	)
 	if err != nil {
-		return nil, errors.New("username atau password salah")
+		return nil, errors.New("username or password incorrect")
 	}
 
 	token := jwt.NewWithClaims(
@@ -203,7 +205,7 @@ func (s *userService) Login(req *dto.LoginRequest) (*dto.LoginResponse, error) {
 
 	tokenString, err := token.SignedString([]byte(s.jwtSecret))
 	if err != nil {
-		return nil, errors.New("gagal membuat token")
+		return nil, errors.New("failed to create token")
 	}
 
 	userResponse := toUserResponse(*user)
@@ -214,12 +216,12 @@ func (s *userService) Login(req *dto.LoginRequest) (*dto.LoginResponse, error) {
 	}, nil
 }
 
-func (s *userService) UpdateProfile(id uint, req *dto.UpdateUserRequest) (*dto.UserResponse, error) {
+func (s *userService) UpdateProfile(id uint, req *dto.UpdateProfileRequest) (*dto.UserResponse, error) {
 
 	user, err := s.repo.FindByID(id)
 
 	if err != nil {
-		return nil, errors.New("profile tidak ditemukan")
+		return nil, errors.New("profile not found")
 	}
 
 	if req.NamaUser != "" {
@@ -234,16 +236,35 @@ func (s *userService) UpdateProfile(id uint, req *dto.UpdateUserRequest) (*dto.U
 		user.Username = req.Username
 	}
 
-	if req.Foto != "" {
-		user.Foto = req.Foto
-	}
-
 	if err := s.repo.Update(user); err != nil {
 		return nil, err
 	}
 
 	res := toUserResponse(*user)
 
+	return &res, nil
+}
+
+func (s *userService) UpdateProfilePhoto(id uint, fotoPath string) (*dto.UserResponse, error) {
+
+	user, err := s.repo.FindByID(id)
+
+	if err != nil {
+		return nil, errors.New("profile not found")
+	}
+
+	oldPath := user.Foto
+	user.Foto = fotoPath
+
+	if err := s.repo.Update(user); err != nil {
+		return nil, err
+	}
+
+	if oldPath != "" {
+		os.Remove(oldPath)
+	}
+
+	res := toUserResponse(*user)
 	return &res, nil
 }
 

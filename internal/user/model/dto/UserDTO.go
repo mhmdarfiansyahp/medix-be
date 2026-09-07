@@ -1,6 +1,9 @@
 package dto
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"regexp"
+)
 
 // UserStatus accepts both string ("aktif"/"nonaktif") and numeric (1/0)
 // representations of the user status field, so callers sending either shape
@@ -8,7 +11,7 @@ import "encoding/json"
 type UserStatus string
 
 func (s *UserStatus) UnmarshalJSON(data []byte) error {
-	// Try numeric representation first (1 = aktif, 0 = nonaktif).
+	// Try numeric representation first (1 = active, 0 = inactive).
 	var num int
 	if err := json.Unmarshal(data, &num); err == nil {
 		if num == 1 {
@@ -56,6 +59,22 @@ type UpdateUserRequest struct {
 	Password string     `json:"password" binding:"omitempty,min=6"`
 	Status   UserStatus `json:"status" binding:"omitempty,oneof=aktif nonaktif"`
 	Foto     string     `json:"foto"`
+}
+
+type UpdateProfileRequest struct {
+	NamaUser string `form:"nama_user" binding:"omitempty,max=100"`
+	NoTelp   string `form:"no_telp" binding:"omitempty,max=13"`
+	Username string `form:"username" binding:"omitempty,max=50"`
+	Foto     string `form:"foto"`
+}
+
+func (r *UpdateProfileRequest) ValidateNoTelp() bool {
+	if r.NoTelp == "" {
+		return true
+	}
+	pattern := `^(\+62|0)[0-9]{9,12}$`
+	match, _ := regexp.MatchString(pattern, r.NoTelp)
+	return match
 }
 
 type UserFilterRequest struct {

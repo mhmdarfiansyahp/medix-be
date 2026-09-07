@@ -28,7 +28,7 @@ func main() {
 	r := gin.Default()
 
 	r.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"http://localhost:5173"}, // URL Frontend Vite kamu
+		AllowOrigins:     []string{"http://localhost:5173"}, // Your Vite frontend URL
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization"},
 		ExposeHeaders:    []string{"Content-Length"},
@@ -74,6 +74,6 @@ func main() {
 
 	log.Println("Server Medix BE running on port 8080")
 	if err := r.Run(":8080"); err != nil {
-		log.Fatalf("Gagal menjalankan server: %v", err)
+		log.Fatalf("Failed to start server: %v", err)
 	}
 }

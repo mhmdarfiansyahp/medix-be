@@ -19,20 +19,20 @@ func Auth() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		header := c.GetHeader("Authorization")
 		if header == "" {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "token tidak ditemukan"})
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "token not found"})
 			return
 		}
 
 		parts := strings.SplitN(header, " ", 2)
 		if len(parts) != 2 || !strings.EqualFold(parts[0], "Bearer") {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "format token tidak valid"})
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid token format"})
 			return
 		}
 
 		tokenString := parts[1]
 		secret := os.Getenv("JWT_SECRET")
 		if secret == "" {
-			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "JWT_SECRET belum dikonfigurasi"})
+			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "JWT_SECRET not configured"})
 			return
 		}
 
@@ -43,19 +43,19 @@ func Auth() gin.HandlerFunc {
 			return []byte(secret), nil
 		})
 		if err != nil || !token.Valid {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "token tidak valid atau sudah kedaluwarsa"})
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid or expired token"})
 			return
 		}
 
 		claims, ok := token.Claims.(jwt.MapClaims)
 		if !ok {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "klaim token tidak valid"})
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid token claims"})
 			return
 		}
 
 		userIDFloat, ok := claims["user_id"].(float64)
 		if !ok {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "user_id tidak ditemukan dalam token"})
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "user_id not found in token"})
 			return
 		}
 
@@ -76,13 +76,13 @@ func RequireRoles(roles ...string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		roleVal, exists := c.Get(ContextRole)
 		if !exists {
-			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "tidak memiliki akses"})
+			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "access denied"})
 			return
 		}
 
 		role, ok := roleVal.(string)
 		if !ok || !allowed[role] {
-			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "tidak memiliki akses"})
+			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "access denied"})
 			return
 		}
 

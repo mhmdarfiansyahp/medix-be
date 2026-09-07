@@ -13,17 +13,17 @@ import (
 var DB *gorm.DB
 
 func LoadEnv() {
-	viper.SetConfigName("config")   // Nama file tanpa ekstensi (.yaml)
-	viper.SetConfigType("yaml")     // Tipe file konfigurasi
-	viper.AddConfigPath("./config") // Mencari di dalam folder config/
-	viper.AddConfigPath(".")        // Alternatif jika config.yaml ditaruh di root folder
+	viper.SetConfigName("config")   
+	viper.SetConfigType("yaml")     
+	viper.AddConfigPath("./config") 
+	viper.AddConfigPath(".")      
 
 	err := viper.ReadInConfig()
 	if err != nil {
 		log.Fatalf("Error loading config.yaml file: %v", err)
 	}
 
-	// Pastikan JWT_SECRET tersedia untuk package yang memakai os.Getenv
+	// Ensure JWT_SECRET is available for packages using os.Getenv
 	if os.Getenv("JWT_SECRET") == "" {
 		if secret := viper.GetString("jwt.secret"); secret != "" {
 			os.Setenv("JWT_SECRET", secret)
@@ -47,11 +47,11 @@ func ConnectDatabase() {
 		log.Fatalf("Failed to connect database: %v", err)
 	}
 
-	// Buat ekstensi UUID jika kamu berencana menggunakan UUID di PostgreSQL
+	// Create uuid-ossp extension if you plan to use UUID in PostgreSQL
 	if err := db.Exec(`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`).Error; err != nil {
 		log.Printf("Warning creating uuid-ossp extension: %v", err)
 	}
 
 	DB = db
-	fmt.Println("Berhasil terhubung ke database Medix!")
+	fmt.Println("Successfully connected to Medix database!")
 }

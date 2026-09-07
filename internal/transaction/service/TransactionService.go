@@ -38,36 +38,36 @@ func (s *transactionService) CreateTransaction(userID uint, req dto.CreateTransa
 		for _, item := range req.Details {
 
 			if seenObat[item.IDObat] {
-				return errors.New(
-					"obat yang sama tidak boleh dimasukkan lebih dari satu kali",
-				)
+			return errors.New(
+				"the same medicine cannot be added more than once",
+			)
 			}
 
 			seenObat[item.IDObat] = true
 
-			// Ambil obat dari database
+			// Fetch medicine from database
 			obat, err := s.repo.FindObatByID(tx, item.IDObat)
 			if err != nil {
-				return errors.New("obat tidak ditemukan")
+				return errors.New("medicine not found")
 			}
 
-			// Pastikan obat aktif
+			// Ensure medicine is active
 			if obat.Status != 1 {
-				return fmt.Errorf(
-					"obat %s sedang tidak aktif",
-					obat.NamaObat,
-				)
+			return fmt.Errorf(
+				"medicine %s is currently inactive",
+				obat.NamaObat,
+			)
 			}
 
-			// Validasi stok
+			// Validate stock
 			if obat.Stok < item.Jumlah {
-				return fmt.Errorf(
-					"stok obat %s tidak mencukupi",
-					obat.NamaObat,
-				)
+			return fmt.Errorf(
+				"insufficient stock for medicine %s",
+				obat.NamaObat,
+			)
 			}
 
-			// Harga snapshot dari database
+			// Price snapshot from database
 			hargaSatuan := obat.Harga
 			subtotal := float64(item.Jumlah) * hargaSatuan
 			totalHarga += subtotal
@@ -117,7 +117,7 @@ func (s *transactionService) CreateTransaction(userID uint, req dto.CreateTransa
 
 	if err != nil {
 		return nil, errors.New(
-			"gagal memproses transaksi: " + err.Error(),
+			"failed to process transaction: " + err.Error(),
 		)
 	}
 
@@ -142,7 +142,7 @@ func (s *transactionService) GetAllTransactions() ([]dto.TransactionResponse, er
 func (s *transactionService) GetTransactionByID(id uint) (*dto.TransactionResponse, error) {
 	transaksi, err := s.repo.FindByID(id)
 	if err != nil {
-		return nil, errors.New("transaksi tidak ditemukan")
+		return nil, errors.New("transaction not found")
 	}
 
 	res := toTransactionResponse(*transaksi)
@@ -191,30 +191,30 @@ func (s *transactionService) CancelTransaction(id uint, userID uint) error {
 		return errors.New("transaksi tidak ditemukan")
 	}
 
-	// Pastikan transaksi milik kasir yang sedang login
+	// Ensure transaction belongs to the logged-in cashier
 	if transaksi.IDUser != userID {
 		tx.Rollback()
-		return errors.New("anda tidak memiliki akses untuk membatalkan transaksi ini")
+		return errors.New("you do not have access to cancel this transaction")
 	}
 
-	// Sudah dibatalkan
+	// Already cancelled
 	if transaksi.Status == model.StatusTransaksiDibatalkan {
 		tx.Rollback()
-		return errors.New("transaksi sudah dibatalkan")
+		return errors.New("transaction already cancelled")
 	}
 
-	// Hanya transaksi hari ini
+	// Only today's transactions
 	now := time.Now()
 
 	if transaksi.TglTransaksi.Year() != now.Year() ||
 		transaksi.TglTransaksi.YearDay() != now.YearDay() {
 		tx.Rollback()
 		return errors.New(
-			"transaksi hanya dapat dibatalkan pada hari yang sama",
+			"transaction can only be cancelled on the same day",
 		)
 	}
 
-	// Kembalikan stok
+	// Restore stock
 	for _, detail := range transaksi.Details {
 		if err := s.repo.RestoreStokObat(
 			tx,
@@ -226,7 +226,7 @@ func (s *transactionService) CancelTransaction(id uint, userID uint) error {
 		}
 	}
 
-	// Ubah status menjadi dibatalkan
+	// Change status to cancelled
 	if err := s.repo.UpdateStatus(tx, id, model.StatusTransaksiDibatalkan); err != nil {
 		tx.Rollback()
 		return err
@@ -273,7 +273,7 @@ func (s *transactionService) GetReceipt(id uint) (*dto.ReceiptResponse, error) {
 	transaction, err := s.repo.FindByID(id)
 
 	if err != nil {
-		return nil, errors.New("transaksi tidak ditemukan")
+		return nil, errors.New("transaction not found")
 	}
 
 	if transaction.Status == model.StatusTransaksiDibatalkan {

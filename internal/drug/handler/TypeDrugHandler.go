@@ -65,7 +65,7 @@ func (h *TypeDrugHandler) CreateTypeDrug() gin.HandlerFunc {
 			return
 		}
 
-		response.Success(c, http.StatusCreated, "Jenis obat berhasil ditambahkan", res)
+		response.Success(c, http.StatusCreated, "Drug type added successfully", res)
 	}
 }
 
@@ -77,7 +77,7 @@ func (h *TypeDrugHandler) GetAllTypeDrugs() gin.HandlerFunc {
 			return
 		}
 
-		response.Success(c, http.StatusOK, "Jenis obat berhasil diambil", res)
+		response.Success(c, http.StatusOK, "Drug type retrieved successfully", res)
 	}
 }
 
@@ -86,7 +86,7 @@ func (h *TypeDrugHandler) GetTypeDrugByID() gin.HandlerFunc {
 		idParam := c.Param("id")
 		id, err := strconv.ParseUint(idParam, 10, 32)
 		if err != nil {
-			response.Error(c, http.StatusBadRequest, "ID jenis obat tidak valid")
+			response.Error(c, http.StatusBadRequest, "invalid drug type ID")
 			return
 		}
 
@@ -96,7 +96,7 @@ func (h *TypeDrugHandler) GetTypeDrugByID() gin.HandlerFunc {
 			return
 		}
 
-		response.Success(c, http.StatusOK, "Jenis obat berhasil diambil", res)
+		response.Success(c, http.StatusOK, "Drug type retrieved successfully", res)
 	}
 }
 
@@ -105,7 +105,7 @@ func (h *TypeDrugHandler) UpdateTypeDrug() gin.HandlerFunc {
 		idParam := c.Param("id")
 		id, err := strconv.ParseUint(idParam, 10, 32)
 		if err != nil {
-			response.Error(c, http.StatusBadRequest, "ID jenis obat tidak valid")
+			response.Error(c, http.StatusBadRequest, "invalid drug type ID")
 			return
 		}
 
@@ -121,7 +121,7 @@ func (h *TypeDrugHandler) UpdateTypeDrug() gin.HandlerFunc {
 			return
 		}
 
-		response.Success(c, http.StatusOK, "Jenis obat berhasil diperbarui", res)
+		response.Success(c, http.StatusOK, "Drug type updated successfully", res)
 	}
 }
 
@@ -130,7 +130,7 @@ func (h *TypeDrugHandler) DeleteTypeDrug() gin.HandlerFunc {
 		idParam := c.Param("id")
 		id, err := strconv.ParseUint(idParam, 10, 32)
 		if err != nil {
-			response.Error(c, http.StatusBadRequest, "ID jenis obat tidak valid")
+			response.Error(c, http.StatusBadRequest, "invalid drug type ID")
 			return
 		}
 
@@ -139,6 +139,6 @@ func (h *TypeDrugHandler) DeleteTypeDrug() gin.HandlerFunc {
 			return
 		}
 
-		response.Success(c, http.StatusOK, "Jenis obat berhasil dihapus", nil)
+		response.Success(c, http.StatusOK, "Drug type deleted successfully", nil)
 	}
 }

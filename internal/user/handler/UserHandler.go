@@ -2,8 +2,12 @@ package handler
 
 import (
 	"context"
+	"fmt"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strconv"
+	"time"
 
 	"medix-be/internal/common/response"
 	"medix-be/internal/user/model/dto"
@@ -57,6 +61,7 @@ func (h *UserHandler) RegisterRouter() {
 	protected.DELETE("/:id", h.DeleteUser())
 	protected.GET("/profile", h.GetProfile())
 	protected.PUT("/profile", h.UpdateProfile())
+	protected.POST("/profile/photo", h.UploadProfilePhoto())
 }
 
 func (h *UserHandler) CreateUser() gin.HandlerFunc {
@@ -74,7 +79,7 @@ func (h *UserHandler) CreateUser() gin.HandlerFunc {
 			return
 		}
 
-		response.Success(c, http.StatusCreated, "User berhasil dibuat", res)
+		response.Success(c, http.StatusCreated, "User created successfully", res)
 	}
 }
 
@@ -109,7 +114,7 @@ func (h *UserHandler) GetAllUsers() gin.HandlerFunc {
 			return
 		}
 
-		response.Success(c, http.StatusOK, "Daftar user berhasil diambil", res)
+		response.Success(c, http.StatusOK, "User list retrieved successfully", res)
 	}
 }
 
@@ -128,7 +133,7 @@ func (h *UserHandler) GetUserByID() gin.HandlerFunc {
 			return
 		}
 
-		response.Success(c, http.StatusOK, "User berhasil diambil", res)
+		response.Success(c, http.StatusOK, "User retrieved successfully", res)
 	}
 }
 
@@ -137,7 +142,7 @@ func (h *UserHandler) UpdateUser() gin.HandlerFunc {
 		idParam := c.Param("id")
 		id, err := strconv.ParseUint(idParam, 10, 32)
 		if err != nil {
-			response.Error(c, http.StatusBadRequest, "ID user tidak valid")
+			response.Error(c, http.StatusBadRequest, "invalid user ID")
 			return
 		}
 
@@ -153,7 +158,7 @@ func (h *UserHandler) UpdateUser() gin.HandlerFunc {
 			return
 		}
 
-		response.Success(c, http.StatusOK, "User berhasil diperbarui", res)
+		response.Success(c, http.StatusOK, "User updated successfully", res)
 	}
 }
 
@@ -171,7 +176,7 @@ func (h *UserHandler) DeleteUser() gin.HandlerFunc {
 			return
 		}
 
-		response.Success(c, http.StatusOK, "User berhasil dihapus", nil)
+		response.Success(c, http.StatusOK, "User deleted successfully", nil)
 	}
 }
 
@@ -192,7 +197,7 @@ func (h *UserHandler) Login() gin.HandlerFunc {
 			return
 		}
 
-		response.Success(c, http.StatusOK, "Login berhasil", res)
+		response.Success(c, http.StatusOK, "Login successful", res)
 	}
 }
 
@@ -202,13 +207,13 @@ func (h *UserHandler) GetProfile() gin.HandlerFunc {
 
 		value, exists := c.Get("user_id")
 		if !exists {
-			response.Error(c, http.StatusUnauthorized, "User tidak terautentikasi")
+			response.Error(c, http.StatusUnauthorized, "user not authenticated")
 			return
 		}
 
 		userID, ok := value.(uint)
 		if !ok {
-			response.Error(c, http.StatusUnauthorized, "User ID tidak valid")
+			response.Error(c, http.StatusUnauthorized, "invalid user ID")
 			return
 		}
 
@@ -218,7 +223,7 @@ func (h *UserHandler) GetProfile() gin.HandlerFunc {
 			return
 		}
 
-		response.Success(c, http.StatusOK, "Profile berhasil diambil", res)
+		response.Success(c, http.StatusOK, "Profile retrieved successfully", res)
 	}
 }
 
@@ -228,20 +233,25 @@ func (h *UserHandler) UpdateProfile() gin.HandlerFunc {
 
 		value, exists := c.Get("user_id")
 		if !exists {
-			response.Error(c, http.StatusUnauthorized, "User tidak terautentikasi")
+			response.Error(c, http.StatusUnauthorized, "user not authenticated")
 			return
 		}
 
 		userID, ok := value.(uint)
 		if !ok {
-			response.Error(c, http.StatusUnauthorized, "User ID tidak valid")
+			response.Error(c, http.StatusUnauthorized, "invalid user ID")
 			return
 		}
 
-		var payload dto.UpdateUserRequest
+		var payload dto.UpdateProfileRequest
 
-		if err := c.ShouldBindJSON(&payload); err != nil {
+		if err := c.ShouldBind(&payload); err != nil {
 			response.Error(c, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		if !payload.ValidateNoTelp() {
+			response.Error(c, http.StatusBadRequest, "invalid phone number format (example: 08123456789 or +628123456789)")
 			return
 		}
 
@@ -255,6 +265,57 @@ func (h *UserHandler) UpdateProfile() gin.HandlerFunc {
 			return
 		}
 
-		response.Success(c, http.StatusOK, "Profile berhasil diperbarui", res)
+		response.Success(c, http.StatusOK, "Profile updated successfully", res)
+	}
+}
+
+func (h *UserHandler) UploadProfilePhoto() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		value, exists := c.Get("user_id")
+		if !exists {
+			response.Error(c, http.StatusUnauthorized, "user not authenticated")
+			return
+		}
+		userID, ok := value.(uint)
+		if !ok {
+			response.Error(c, http.StatusUnauthorized, "invalid user ID")
+			return
+		}
+
+		file, err := c.FormFile("foto")
+		if err != nil {
+			response.Error(c, http.StatusBadRequest, "photo must be uploaded")
+			return
+		}
+
+		if file.Size > 2<<20 {
+			response.Error(c, http.StatusBadRequest, "photo size max 2MB")
+			return
+		}
+
+		ext := filepath.Ext(file.Filename)
+		allowed := map[string]bool{".jpg": true, ".jpeg": true, ".png": true, ".webp": true}
+		if !allowed[ext] {
+			response.Error(c, http.StatusBadRequest, "photo format must be jpg, jpeg, png, or webp")
+			return
+		}
+
+		os.MkdirAll("uploads/profiles", 0755)
+		filename := fmt.Sprintf("user_%d_%d%s", userID, time.Now().UnixNano(), ext)
+		savePath := filepath.Join("uploads/profiles", filename)
+
+		if err := c.SaveUploadedFile(file, savePath); err != nil {
+			response.Error(c, http.StatusInternalServerError, "failed to save photo")
+			return
+		}
+
+		res, err := h.userService.UpdateProfilePhoto(userID, savePath)
+		if err != nil {
+			os.Remove(savePath)
+			response.Error(c, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		response.Success(c, http.StatusOK, "Profile photo updated successfully", res)
 	}
 }

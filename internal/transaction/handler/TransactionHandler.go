@@ -62,13 +62,13 @@ func (h *TransactionHandler) Create() gin.HandlerFunc {
 
 		userIDValue, exists := c.Get("user_id")
 		if !exists {
-			response.Error(c, http.StatusUnauthorized, "User tidak terautentikasi")
+			response.Error(c, http.StatusUnauthorized, "user not authenticated")
 			return
 		}
 
 		userID, ok := userIDValue.(uint)
 		if !ok {
-			response.Error(c, http.StatusUnauthorized, "User ID tidak valid")
+			response.Error(c, http.StatusUnauthorized, "invalid user ID")
 			return
 		}
 
@@ -82,7 +82,7 @@ func (h *TransactionHandler) Create() gin.HandlerFunc {
 			return
 		}
 
-		response.Success(c, http.StatusCreated, "Transaksi berhasil disimpan", res)
+		response.Success(c, http.StatusCreated, "Transaction saved successfully", res)
 	}
 }
 
@@ -94,7 +94,7 @@ func (h *TransactionHandler) GetAll() gin.HandlerFunc {
 			return
 		}
 
-		response.Success(c, http.StatusOK, "Daftar transaksi berhasil diambil", res)
+		response.Success(c, http.StatusOK, "Transaction list retrieved successfully", res)
 	}
 }
 
@@ -115,7 +115,7 @@ func (h *TransactionHandler) GetByID() gin.HandlerFunc {
 			return
 		}
 
-		response.Success(c, http.StatusOK, "Transaksi berhasil diambil", res)
+		response.Success(c, http.StatusOK, "Transaction retrieved successfully", res)
 	}
 }
 
@@ -132,14 +132,14 @@ func (h *TransactionHandler) Cancel() gin.HandlerFunc {
 		userIDValue, exists := c.Get("user_id")
 
 		if !exists {
-			response.Error(c, http.StatusUnauthorized, "User tidak terautentikasi")
+			response.Error(c, http.StatusUnauthorized, "user not authenticated")
 			return
 		}
 
 		userID, ok := userIDValue.(uint)
 
 		if !ok {
-			response.Error(c, http.StatusUnauthorized, "User ID tidak valid")
+			response.Error(c, http.StatusUnauthorized, "invalid user ID")
 			return
 		}
 
@@ -153,7 +153,7 @@ func (h *TransactionHandler) Cancel() gin.HandlerFunc {
 			return
 		}
 
-		response.Success(c, http.StatusOK, "Transaksi berhasil dibatalkan", nil)
+		response.Success(c, http.StatusOK, "Transaction cancelled successfully", nil)
 	}
 }
 
@@ -162,13 +162,13 @@ func (h *TransactionHandler) GetToday() gin.HandlerFunc {
 		userIDValue, exists := c.Get("user_id")
 
 		if !exists {
-			response.Error(c, http.StatusUnauthorized, "User tidak terautentikasi")
+			response.Error(c, http.StatusUnauthorized, "user not authenticated")
 			return
 		}
 
 		userID, ok := userIDValue.(uint)
 		if !ok {
-			response.Error(c, http.StatusUnauthorized, "User ID tidak valid")
+			response.Error(c, http.StatusUnauthorized, "invalid user ID")
 			return
 		}
 
@@ -180,7 +180,7 @@ func (h *TransactionHandler) GetToday() gin.HandlerFunc {
 			return
 		}
 
-		response.Success(c, http.StatusOK, "Riwayat transaksi hari ini berhasil diambil", res)
+		response.Success(c, http.StatusOK, "Today's transaction history retrieved successfully", res)
 	}
 }
 
@@ -201,6 +201,6 @@ func (h *TransactionHandler) GetReceipt() gin.HandlerFunc {
 			return
 		}
 
-		response.Success(c, http.StatusOK, "Struk transaksi berhasil diambil", res)
+		response.Success(c, http.StatusOK, "Transaction receipt retrieved successfully", res)
 	}
 }
