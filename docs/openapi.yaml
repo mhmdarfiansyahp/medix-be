@@ -1,0 +1,1164 @@
+openapi: 3.0.3
+info:
+  title: Medix BE API
+  version: 1.0.0
+  description: REST API for Medix medical service system
+servers:
+  - url: http://localhost:8080/api/v1
+    description: Development server
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    # --- Auth ---
+    LoginRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+          format: password
+    LoginResponse:
+      type: object
+      properties:
+        token:
+          type: string
+        user:
+          $ref: '#/components/schemas/UserResponse'
+    CreateUserRequest:
+      type: object
+      required: [nama_user, role, username, password]
+      properties:
+        nama_user:
+          type: string
+          maxLength: 100
+        no_telp:
+          type: string
+          maxLength: 13
+        role:
+          type: string
+          enum: [admin, kasir, owner]
+        username:
+          type: string
+          maxLength: 50
+        password:
+          type: string
+          format: password
+          minLength: 6
+        status:
+          type: string
+          enum: [aktif, nonaktif]
+        foto:
+          type: string
+    UpdateUserRequest:
+      type: object
+      properties:
+        nama_user:
+          type: string
+          maxLength: 100
+        no_telp:
+          type: string
+          maxLength: 13
+        role:
+          type: string
+          enum: [admin, kasir, owner]
+        username:
+          type: string
+          maxLength: 50
+        password:
+          type: string
+          format: password
+          minLength: 6
+        status:
+          type: string
+          enum: [aktif, nonaktif]
+        foto:
+          type: string
+    UpdateProfileRequest:
+      type: object
+      properties:
+        nama_user:
+          type: string
+          maxLength: 100
+        no_telp:
+          type: string
+          maxLength: 13
+        username:
+          type: string
+          maxLength: 50
+        foto:
+          type: string
+    UserResponse:
+      type: object
+      properties:
+        id_user:
+          type: integer
+        nama_user:
+          type: string
+        no_telp:
+          type: string
+        role:
+          type: string
+        username:
+          type: string
+        status:
+          type: string
+          enum: [aktif, nonaktif]
+        foto:
+          type: string
+    # --- Drug Type ---
+    TypeDrugRequest:
+      type: object
+      required: [nama_jenis]
+      properties:
+        nama_jenis:
+          type: string
+          maxLength: 50
+    TypeDrugResponse:
+      type: object
+      properties:
+        id_jenis:
+          type: integer
+        nama_jenis:
+          type: string
+    # --- Medicine ---
+    CreateMedicineRequest:
+      type: object
+      required: [nama_obat, jenis_obat_id, tgl_kadaluarsa, harga, stok]
+      properties:
+        nama_obat:
+          type: string
+          maxLength: 150
+        merk_obat:
+          type: string
+          maxLength: 100
+        jenis_obat_id:
+          type: integer
+        barcode:
+          type: string
+          maxLength: 50
+        tgl_kadaluarsa:
+          type: string
+          format: date
+        harga:
+          type: number
+          format: double
+          minimum: 0
+        stok:
+          type: integer
+          minimum: 0
+        stok_minimum:
+          type: integer
+          default: 10
+        keterangan:
+          type: string
+        status:
+          type: integer
+          enum: [0, 1]
+          default: 1
+        gambar:
+          type: string
+    UpdateMedicineRequest:
+      type: object
+      properties:
+        nama_obat:
+          type: string
+          maxLength: 150
+        merk_obat:
+          type: string
+          maxLength: 100
+        jenis_obat_id:
+          type: integer
+        barcode:
+          type: string
+          maxLength: 50
+        tgl_kadaluarsa:
+          type: string
+          format: date
+        harga:
+          type: number
+          format: double
+          minimum: 0
+        stok:
+          type: integer
+          minimum: 0
+        stok_minimum:
+          type: integer
+        keterangan:
+          type: string
+        status:
+          type: integer
+          enum: [0, 1]
+        gambar:
+          type: string
+    MedicineResponse:
+      type: object
+      properties:
+        id_obat:
+          type: integer
+        nama_obat:
+          type: string
+        merk_obat:
+          type: string
+        jenis_obat_id:
+          type: integer
+        nama_jenis:
+          type: string
+        barcode:
+          type: string
+        tgl_kadaluarsa:
+          type: string
+          format: date
+        harga:
+          type: number
+          format: double
+        stok:
+          type: integer
+        stok_minimum:
+          type: integer
+        keterangan:
+          type: string
+        status:
+          type: integer
+        gambar:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    MedicineListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/MedicineResponse'
+        pagination:
+          $ref: '#/components/schemas/PaginationResponse'
+    PaginationResponse:
+      type: object
+      properties:
+        current_page:
+          type: integer
+        total_pages:
+          type: integer
+        total_items:
+          type: integer
+        items_per_page:
+          type: integer
+    StockAlertResponse:
+      type: object
+      properties:
+        id_obat:
+          type: integer
+        nama_obat:
+          type: string
+        stok:
+          type: integer
+        stok_minimum:
+          type: integer
+    ExpiringAlertResponse:
+      type: object
+      properties:
+        id_obat:
+          type: integer
+        nama_obat:
+          type: string
+        tgl_kadaluarsa:
+          type: string
+          format: date
+        days_remaining:
+          type: integer
+    NotificationSummaryResponse:
+      type: object
+      properties:
+        low_stock_count:
+          type: integer
+        expiring_soon_count:
+          type: integer
+    # --- Transaction ---
+    DetailItemRequest:
+      type: object
+      required: [id_obat, jumlah]
+      properties:
+        id_obat:
+          type: integer
+        jumlah:
+          type: integer
+          minimum: 1
+    CreateTransactionRequest:
+      type: object
+      required: [details]
+      properties:
+        details:
+          type: array
+          items:
+            $ref: '#/components/schemas/DetailItemRequest'
+            minItems: 1
+    DetailItemResponse:
+      type: object
+      properties:
+        id_detail:
+          type: integer
+        id_obat:
+          type: integer
+        nama_obat:
+          type: string
+        jumlah:
+          type: integer
+        harga_satuan:
+          type: number
+          format: double
+        subtotal:
+          type: number
+          format: double
+    TransactionResponse:
+      type: object
+      properties:
+        id_transaksi:
+          type: integer
+        id_user:
+          type: integer
+        tgl_transaksi:
+          type: string
+          format: date-time
+        total_harga:
+          type: number
+          format: double
+        status:
+          type: integer
+        details:
+          type: array
+          items:
+            $ref: '#/components/schemas/DetailItemResponse'
+        created_at:
+          type: string
+          format: date-time
+    TransactionListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/TransactionResponse'
+    ReceiptResponse:
+      type: object
+      properties:
+        id_transaksi:
+          type: integer
+        tgl_transaksi:
+          type: string
+          format: date-time
+        id_user:
+          type: integer
+        details:
+          type: array
+          items:
+            $ref: '#/components/schemas/DetailItemResponse'
+        total_harga:
+          type: number
+          format: double
+    TodayTransactionResponse:
+      type: object
+      properties:
+        transactions:
+          type: array
+          items:
+            $ref: '#/components/schemas/TransactionResponse'
+        summary:
+          $ref: '#/components/schemas/TransactionSummaryResponse'
+    TransactionSummaryResponse:
+      type: object
+      properties:
+        total_transaksi:
+          type: integer
+        total_penjualan:
+          type: number
+          format: double
+    # --- Report ---
+    SalesChartData:
+      type: object
+      properties:
+        periode:
+          type: string
+        total_penjualan:
+          type: number
+          format: double
+        jumlah_transaksi:
+          type: integer
+    SalesSummaryResponse:
+      type: object
+      properties:
+        total_penjualan:
+          type: number
+          format: double
+        total_transaksi:
+          type: integer
+        chart_data:
+          type: array
+          items:
+            $ref: '#/components/schemas/SalesChartData'
+    DrugSalesStat:
+      type: object
+      properties:
+        id_obat:
+          type: integer
+        nama_obat:
+          type: string
+        total_terjual:
+          type: integer
+        total_omset:
+          type: number
+          format: double
+    DrugRankingResponse:
+      type: object
+      properties:
+        top_medicines:
+          type: array
+          items:
+            $ref: '#/components/schemas/DrugSalesStat'
+        bottom_medicines:
+          type: array
+          items:
+            $ref: '#/components/schemas/DrugSalesStat'
+    # --- Common Response ---
+    SuccessResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [success]
+        message:
+          type: string
+        data:
+          type: object
+    ErrorResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [error]
+        message:
+          type: string
+        data:
+          type: object
+          nullable: true
+security:
+  - BearerAuth: []
+paths:
+  # ==================== AUTH ====================
+  /users/login:
+    post:
+      tags: [Auth]
+      summary: User login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /users:
+    post:
+      tags: [Auth]
+      summary: Create new user (public)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUserRequest'
+      responses:
+        '201':
+          description: User created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  # ==================== USER PROFILE ====================
+  /users/profile:
+    get:
+      tags: [User Profile]
+      summary: Get current user profile
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Profile retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+    put:
+      tags: [User Profile]
+      summary: Update current user profile
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateProfileRequest'
+      responses:
+        '200':
+          description: Profile updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+    post:
+      summary: Upload profile photo
+      tags: [User Profile]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [foto]
+              properties:
+                foto:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Photo uploaded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+  # ==================== USER ADMIN ====================
+  /users:
+    get:
+      tags: [User Admin]
+      summary: List all users (admin)
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Search'
+        - $ref: '#/components/parameters/Role'
+        - $ref: '#/components/parameters/Status'
+      responses:
+        '200':
+          description: User list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+  /users/{id}:
+    get:
+      tags: [User Admin]
+      summary: Get user by ID
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      responses:
+        '200':
+          description: User found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    put:
+      tags: [User Admin]
+      summary: Update user
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserRequest'
+      responses:
+        '200':
+          description: User updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+    delete:
+      tags: [User Admin]
+      summary: Delete user
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      responses:
+        '200':
+          description: User deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+  # ==================== DRUG TYPE ====================
+  /type-drugs:
+    get:
+      tags: [Drug Type]
+      summary: List all drug types
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Drug type list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+    post:
+      tags: [Drug Type]
+      summary: Create drug type
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TypeDrugRequest'
+      responses:
+        '201':
+          description: Drug type created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+  /type-drugs/{id}:
+    get:
+      tags: [Drug Type]
+      summary: Get drug type by ID
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TypeDrugId'
+      responses:
+        '200':
+          description: Drug type found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+    put:
+      tags: [Drug Type]
+      summary: Update drug type
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TypeDrugId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TypeDrugRequest'
+      responses:
+        '200':
+          description: Drug type updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+    delete:
+      tags: [Drug Type]
+      summary: Delete drug type
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TypeDrugId'
+      responses:
+        '200':
+          description: Drug type deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+  # ==================== MEDICINE ====================
+  /medicines:
+    get:
+      tags: [Medicine]
+      summary: List medicines with search/filter
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Search'
+        - $ref: '#/components/parameters/JenisObatId'
+        - $ref: '#/components/parameters/Status'
+        - $ref: '#/components/parameters/StatusStok'
+        - $ref: '#/components/parameters/Barcode'
+      responses:
+        '200':
+          description: Medicine list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+    post:
+      tags: [Medicine]
+      summary: Create new medicine
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateMedicineRequest'
+      responses:
+        '201':
+          description: Medicine created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '409':
+          description: Barcode already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /medicines/barcode/{barcode}:
+    get:
+      tags: [Medicine]
+      summary: Get medicine by barcode
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/BarcodeParam'
+      responses:
+        '200':
+          description: Medicine found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '404':
+          description: Medicine not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /medicines/{id}:
+    get:
+      tags: [Medicine]
+      summary: Get medicine by ID
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/MedicineId'
+      responses:
+        '200':
+          description: Medicine found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+    put:
+      tags: [Medicine]
+      summary: Update medicine
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/MedicineId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateMedicineRequest'
+      responses:
+        '200':
+          description: Medicine updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+  /medicines/{id}/status:
+    patch:
+      tags: [Medicine]
+      summary: Toggle medicine active status
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/MedicineId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [is_active]
+              properties:
+                is_active:
+                  type: boolean
+      responses:
+        '200':
+          description: Status updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+  /medicines/alerts/low-stock:
+    get:
+      tags: [Medicine]
+      summary: Get low stock medicines
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Low stock list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+  /medicines/alerts/expiring:
+    get:
+      tags: [Medicine]
+      summary: Get expiring medicines
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ExpiringDays'
+      responses:
+        '200':
+          description: Expiring list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+  /medicines/alerts/summary:
+    get:
+      tags: [Medicine]
+      summary: Get notification summary
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Summary counts
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+  # ==================== TRANSACTION ====================
+  /transactions:
+    post:
+      tags: [Transaction]
+      summary: Create new transaction
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTransactionRequest'
+      responses:
+        '201':
+          description: Transaction created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          description: Insufficient stock or validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    get:
+      tags: [Transaction]
+      summary: List all transactions
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Transaction list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+  /transactions/today:
+    get:
+      tags: [Transaction]
+      summary: Get today's transactions for current user
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Today's transactions with summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+  /transactions/{id}:
+    get:
+      tags: [Transaction]
+      summary: Get transaction detail
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TransactionId'
+      responses:
+        '200':
+          description: Transaction detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /transactions/{id}/cancel:
+    patch:
+      tags: [Transaction]
+      summary: Cancel transaction (same day only)
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TransactionId'
+      responses:
+        '200':
+          description: Transaction cancelled, stock restored
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '403':
+          description: Not owner or not same day
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /transactions/{id}/receipt:
+    get:
+      tags: [Transaction]
+      summary: Get digital receipt
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TransactionId'
+      responses:
+        '200':
+          description: Receipt data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          description: Cancelled transaction
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  # ==================== REPORT ====================
+  /reports/sales-summary:
+    get:
+      tags: [Report]
+      summary: Sales summary chart
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/StartDate'
+        - $ref: '#/components/parameters/EndDate'
+        - $ref: '#/components/parameters/GroupBy'
+      responses:
+        '200':
+          description: Sales summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+  /reports/drug-ranking:
+    get:
+      tags: [Report]
+      summary: Top & bottom selling medicines
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/StartDate'
+        - $ref: '#/components/parameters/EndDate'
+      responses:
+        '200':
+          description: Drug ranking
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+  /reports/export/excel:
+    get:
+      tags: [Report]
+      summary: Export sales report to Excel
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/StartDate'
+        - $ref: '#/components/parameters/EndDate'
+      responses:
+        '200':
+          description: Excel file
+          content:
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema:
+                type: string
+                format: binary
+  /reports/export/pdf:
+    get:
+      tags: [Report]
+      summary: Export sales report to PDF
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/StartDate'
+        - $ref: '#/components/parameters/EndDate'
+      responses:
+        '200':
+          description: PDF file
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+components:
+  parameters:
+    Page:
+      name: page
+      in: query
+      schema:
+        type: integer
+        default: 1
+    Limit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        default: 10
+    Search:
+      name: search
+      in: query
+      schema:
+        type: string
+    Role:
+      name: role
+      in: query
+      schema:
+        type: string
+        enum: [admin, kasir, owner]
+    Status:
+      name: status
+      in: query
+      schema:
+        type: string
+    StatusStok:
+      name: status_stok
+      in: query
+      schema:
+        type: string
+        enum: [habis, menipis, tersedia]
+    Barcode:
+      name: barcode
+      in: query
+      schema:
+        type: string
+    JenisObatId:
+      name: jenis_obat_id
+      in: query
+      schema:
+        type: integer
+    UserId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+    TypeDrugId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+    MedicineId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+    BarcodeParam:
+      name: barcode
+      in: path
+      required: true
+      schema:
+        type: string
+    TransactionId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+    StartDate:
+      name: start_date
+      in: query
+      schema:
+        type: string
+        format: date
+    EndDate:
+      name: end_date
+      in: query
+      schema:
+        type: string
+        format: date
+    GroupBy:
+      name: group_by
+      in: query
+      schema:
+        type: string
+        enum: [daily, weekly, monthly]
+    ExpiringDays:
+      name: days
+      in: query
+      schema:
+        type: integer
+        default: 30
+```

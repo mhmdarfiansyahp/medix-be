@@ -1,0 +1,44 @@
+```mermaid
+graph TB
+    subgraph Client["Client Layer"]
+        Web[Web / Mobile App]
+    end
+
+    subgraph API["API Layer (Gin)"]
+        Router[Router / Middleware]
+        Auth[Auth Middleware]
+    end
+
+    subgraph Modules["Domain Modules"]
+        User[User Module]
+        Medicine[Medicine Module]
+        Drug[Drug Type Module]
+        Transaction[Transaction Module]
+        Report[Report Module]
+    end
+
+    subgraph Data["Data Layer"]
+        PG[(PostgreSQL)]
+        Migrate[golang-migrate]
+    end
+
+    Web -->|HTTP/JSON| Router
+    Router --> Auth
+    Auth --> User
+    Auth --> Medicine
+    Auth --> Drug
+    Auth --> Transaction
+    Auth --> Report
+
+    User --> PG
+    Medicine --> PG
+    Drug --> PG
+    Transaction --> PG
+    Report --> PG
+    Migrate --> PG
+
+    style Web fill:#e1f5fe
+    style Router fill:#f3e5f5
+    style Auth fill:#fff3e0
+    style PG fill:#e8f5e9
+```

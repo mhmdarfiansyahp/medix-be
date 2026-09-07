@@ -1,39 +1,38 @@
-# medix-be
+# Medix BE
 
-[![Go](https://img.shields.io/badge/Go-1.26.5-blue)]()
-[![Gin](https://img.shields.io/badge/Gin-%7E1.12-green)]()
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-alpine)]()
-[![License](https://img.shields.io/badge/License-MIT-blue)]()
+[![Go](https://img.shields.io/badge/Go-1.26.5-00ADD8?logo=go)](https://golang.org/)
+[![Gin](https://img.shields.io/badge/Gin-1.12-00ADD8)](https://github.com/gin-gonic/gin)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-336791?logo=postgresql)](https://www.postgresql.org/)
+[![License](https://img.shields.io/badge/License-MIT-blue)](LICENSE)
 
-REST API untuk sistem layanan medis **Medix**.
+REST API for the **Medix** medical service system.
 
 ---
 
-## ⚡ Quick Start
+## Quick Start
 
 ```bash
-# Jalankan PostgreSQL via Docker
+# Start PostgreSQL
 docker compose up -d
 
-# Jalankan server (migrasi + seed otomatis)
+# Run server (migrations + seed run automatically)
 go run cmd/api/main.go
 ```
 
-Server berjalan di **http://localhost:8080**.
+Server runs at **http://localhost:8080**.
 
 ---
 
-## 📦 Prasyarat
+## Prerequisites
 
 - Go 1.26+
-- PostgreSQL 16+ (atau Docker)
-- Docker (opsional)
+- PostgreSQL 16+ (or Docker)
 
 ---
 
-## 🛠️ Konfigurasi
+## Configuration
 
-Konfigurasi utama di `config/config.yaml`. Salin `.env.example` ke `.env` jika perlu override:
+Main config: `config/config.yaml`. Override via `.env`:
 
 ```bash
 cp .env.example .env
@@ -48,76 +47,119 @@ cp .env.example .env
 
 ---
 
-## 📚 User Stories
+## API Endpoints
 
-### Autentikasi & Profil
+All protected endpoints require `Authorization: Bearer <token>` header.
 
-| US | Deskripsi | Endpoint |
-|----|-----------|----------|
-| US-01 | Login (JWT 8 jam, bcrypt) | `POST /api/v1/users/login` |
-| US-03 | Update profil + foto | `PUT /api/v1/users/profile`, `POST /api/v1/users/profile/photo` |
+### Auth
 
-### Manajemen Obat
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/api/v1/users/login` | Login, returns JWT (8h expiry) |
+| `POST` | `/api/v1/users` | Create user (public) |
 
-| US | Deskripsi | Endpoint |
-|----|-----------|----------|
-| US-04 | Tambah obat | `POST /api/v1/medicines` |
-| US-05 | Edit / nonaktifkan obat | `PUT /api/v1/medicines/:id`, `PATCH /api/v1/medicines/:id/status` |
-| US-06 | Search & filter | `GET /api/v1/medicines?search=&jenis_obat_id=&status=` |
-| US-07 | Cari by barcode | `GET /api/v1/medicines/barcode/:barcode` |
-| US-13 | Stok menipis | `GET /api/v1/medicines/alerts/low-stock` |
-| US-14 | Dekat kadaluarsa | `GET /api/v1/medicines/alerts/expiring?days=30` |
+### User Profile
 
-### Transaksi / Kasir
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/v1/users/profile` | Get current user profile |
+| `PUT` | `/api/v1/users/profile` | Update profile (name, phone, username) |
+| `POST` | `/api/v1/users/profile/photo` | Upload profile photo (max 2MB, jpg/png/webp) |
 
-| US | Deskripsi | Endpoint |
-|----|-----------|----------|
-| US-08 | Buat transaksi multi item | `POST /api/v1/transactions` |
-| US-10 | Batalkan transaksi | `PATCH /api/v1/transactions/:id/cancel` |
-| US-11 | Struk digital | `GET /api/v1/transactions/:id/receipt` |
-| US-12 | Riwayat hari ini | `GET /api/v1/transactions/today` |
+### User Management (Admin)
 
-### Laporan & Dashboard
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/v1/users` | List users (paginated, filterable) |
+| `GET` | `/api/v1/users/:id` | Get user by ID |
+| `PUT` | `/api/v1/users/:id` | Update user |
+| `DELETE` | `/api/v1/users/:id` | Delete user |
 
-| US | Deskripsi | Endpoint |
-|----|-----------|----------|
-| US-15 | Ringkasan penjualan | `GET /api/v1/reports/sales-summary?group_by=daily\|weekly\|monthly` |
-| US-16 | Obat terlaris | `GET /api/v1/reports/drug-ranking` |
-| US-17 | Export Excel / PDF | `GET /api/v1/reports/export/excel`, `GET /api/v1/reports/export/pdf` |
+### Drug Types
 
-Semua endpoint kecuali login dan create user memerlukan:
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/v1/type-drugs` | List all drug types |
+| `POST` | `/api/v1/type-drugs` | Create drug type |
+| `GET` | `/api/v1/type-drugs/:id` | Get drug type |
+| `PUT` | `/api/v1/type-drugs/:id` | Update drug type |
+| `DELETE` | `/api/v1/type-drugs/:id` | Delete drug type |
+
+### Medicines
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/v1/medicines` | List medicines (search, filter, pagination) |
+| `POST` | `/api/v1/medicines` | Create medicine |
+| `GET` | `/api/v1/medicines/barcode/:barcode` | Find by barcode |
+| `GET` | `/api/v1/medicines/:id` | Get medicine by ID |
+| `PUT` | `/api/v1/medicines/:id` | Update medicine |
+| `PATCH` | `/api/v1/medicines/:id/status` | Toggle active status |
+| `GET` | `/api/v1/medicines/alerts/low-stock` | Low stock alerts |
+| `GET` | `/api/v1/medicines/alerts/expiring?days=30` | Expiring soon alerts |
+| `GET` | `/api/v1/medicines/alerts/summary` | Notification summary |
+
+### Transactions
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/api/v1/transactions` | Create transaction (multi-item, auto stock deduction) |
+| `GET` | `/api/v1/transactions` | List all transactions |
+| `GET` | `/api/v1/transactions/today` | Current user's transactions today + summary |
+| `GET` | `/api/v1/transactions/:id` | Transaction detail |
+| `PATCH` | `/api/v1/transactions/:id/cancel` | Cancel (same day only, restores stock) |
+| `GET` | `/api/v1/transactions/:id/receipt` | Digital receipt |
+
+### Reports
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/v1/reports/sales-summary?group_by=daily\|weekly\|monthly` | Sales chart data |
+| `GET` | `/api/v1/reports/drug-ranking` | Top 10 / Bottom 10 selling medicines |
+| `GET` | `/api/v1/reports/export/excel` | Export to Excel |
+| `GET` | `/api/v1/reports/export/pdf` | Export to PDF |
+
+---
+
+## Test Accounts (Seeded)
+
+| Username | Password | Role | Status |
+|----------|----------|------|--------|
+| `admin` | `admin123` | admin | Active |
+| `kasir1` | `kasir123` | cashier | Active |
+| `kasir2` | `kasir123` | cashier | Inactive |
+| `kasir3` | `kasir123` | cashier | Active |
+| `owner` | `owner123` | owner | Active |
+
+---
+
+## Project Structure
 
 ```
-Authorization: Bearer <token>
+medix-be/
+├── cmd/api/           # Entry point
+├── config/            # Configuration (YAML + env)
+├── internal/
+│   ├── common/        # Response helpers
+│   ├── drug/          # Drug type module
+│   ├── medicine/      # Medicine module
+│   ├── middleware/    # Auth & role middleware
+│   ├── report/        # Reports & dashboard
+│   ├── transaction/   # Transaction module
+│   └── user/          # Auth & profile
+├── migrations/
+│   └── data/          # SQL migrations + seed
+├── docs/              # Architecture, ER, OpenAPI
+├── Medix/             # Postman collections
+├── .env.example
+├── config.yaml
+├── docker-compose.yml
+└── README.md
 ```
 
 ---
 
-## 🔑 Akun Dummy (Seed)
-
-| Username | Password | Role |
-|----------|----------|------|
-| `admin` | `admin123` | admin |
-| `kasir1` | `kasir123` | kasir |
-| `kasir2` | `kasir123` | kasir (nonaktif) |
-| `kasir3` | `kasir123` | kasir |
-| `owner` | `owner123` | owner |
-
----
-
-## 🏗️ Struktur Direktori
-
-```
-cmd/api/       → Entry point
-config/        → Konfigurasi YAML + env
-internal/      → Business logic (handler, service, repository)
-migrations/    → Skrip migrasi + seed
-Medix/         → Koleksi Postman
-```
-
----
-
-## 🧪 Build
+## Build
 
 ```bash
 go build ./...
@@ -125,8 +167,9 @@ go build ./...
 
 ---
 
-## 📝 Catatan
+## Notes
 
-- Migrasi **forward-only** (tidak ada `.down.sql`).
-- CORS hardcoded ke `http://localhost:5173`.
-- Status user disimpan sebagai `SMALLINT` (1 = aktif, 0 = nonaktif).
+- Migrations are **forward-only** (no `.down.sql`)
+- User status stored as `SMALLINT` (1 = active, 0 = inactive), exposed as strings `"active"` / `"inactive"`
+- CORS hardcoded to `http://localhost:5173` (Vite dev server)
+- Price snapshots stored in transaction details for historical accuracy

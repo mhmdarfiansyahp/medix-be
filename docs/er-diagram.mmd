@@ -1,0 +1,59 @@
+```mermaid
+erDiagram
+    USERS ||--o{ TRANSACTION : creates
+    USERS {
+        uint id_user PK
+        string nama_user
+        string no_telp
+        string role
+        string username UK
+        string password
+        smallint status
+        string foto
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    JENIS_OBAT ||--o{ OBAT : categorizes
+    JENIS_OBAT {
+        int id_jenis PK
+        string nama_jenis UK
+    }
+
+    OBAT ||--o{ DETAIL_PEMBELIAN : "has detail"
+    OBAT {
+        int id_obat PK
+        string nama_obat
+        string merk_obat
+        int jenis_obat_id FK
+        string barcode UK
+        date tgl_kadaluarsa
+        numeric harga
+        int stok
+        int stok_minimum
+        text keterangan
+        smallint status
+        string gambar
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    TRANSACTION ||--o{ DETAIL_PEMBELIAN : contains
+    TRANSACTION {
+        int id_transaksi PK
+        int id_user FK
+        timestamptz tgl_transaksi
+        numeric total_harga
+        smallint status
+        timestamptz created_at
+    }
+
+    DETAIL_PEMBELIAN {
+        int id_detail PK
+        int id_transaksi FK
+        int id_obat FK
+        int jumlah
+        numeric harga_satuan
+        numeric subtotal
+    }
+```

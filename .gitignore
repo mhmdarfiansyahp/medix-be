@@ -52,3 +52,4 @@ temp/
 # OS
 Thumbs.db
 Desktop.ini
+*.jsonc
