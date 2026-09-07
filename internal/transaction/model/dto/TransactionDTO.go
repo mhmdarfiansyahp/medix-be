@@ -8,7 +8,7 @@ type DetailItemRequest struct {
 }
 
 type CreateTransactionRequest struct {
-	IDUser  uint                `json:"id_user" binding:"required"`
+	IDUser  uint                `json:"id_user"`
 	Details []DetailItemRequest `json:"details" binding:"required,gt=0,dive"`
 }
 

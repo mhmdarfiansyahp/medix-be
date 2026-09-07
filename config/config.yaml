@@ -2,9 +2,12 @@ app:
   name: "Medix BE"
   port: "8080"
 
+jwt:
+  secret: "change-this-secret-in-production"
+
 database:
   host: localhost
-  port: 5433
+  port: 5432
   username: postgres
   password: password
   name: medix

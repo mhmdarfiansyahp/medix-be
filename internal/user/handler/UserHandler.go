@@ -2,18 +2,21 @@ package handler
 
 import (
 	"context"
-	"github.com/gin-gonic/gin"
-	"github.com/sirupsen/logrus"
-	"medix-be/internal/user/model/dto"
-	"medix-be/internal/user/service"
 	"net/http"
 	"strconv"
+
+	"medix-be/internal/common/response"
+	"medix-be/internal/user/model/dto"
+	"medix-be/internal/user/service"
+
+	"github.com/gin-gonic/gin"
+	"github.com/sirupsen/logrus"
 )
 
 type UserHandler struct {
 	backgroundContext context.Context
 	logger            *logrus.Logger
-	router            *gin.RouterGroup
+	routers           []*gin.RouterGroup
 	userService       service.UserService
 }
 
@@ -27,26 +30,33 @@ type HandlerContract struct {
 	Router            *gin.RouterGroup
 }
 
-func StartUserHandler(contract *HandlerContract, props *UserHandlerProps) *UserHandler {
+func StartUserHandler(publicContract, authContract *HandlerContract, props *UserHandlerProps) *UserHandler {
 	handler := &UserHandler{
-		backgroundContext: contract.BackgroundContext,
-		logger:            contract.Logger,
-		router:            contract.Router.Group("/users"),
-		userService:       props.UserService,
+		backgroundContext: publicContract.BackgroundContext,
+		logger:            publicContract.Logger,
+		routers: []*gin.RouterGroup{
+			publicContract.Router.Group("/users"),
+			authContract.Router.Group("/users"),
+		},
+		userService: props.UserService,
 	}
 	handler.RegisterRouter()
 	return handler
 }
 
 func (h *UserHandler) RegisterRouter() {
-	h.router.POST("/login", h.Login())
-	h.router.POST("", h.CreateUser())
-	h.router.GET("", h.GetAllUsers())
-	h.router.GET("/:id", h.GetUserByID())
-	h.router.PUT("/:id", h.UpdateUser())
-	h.router.DELETE("/:id", h.DeleteUser())
-	h.router.GET("/profile", h.GetProfile())
-	h.router.PUT("/profile", h.UpdateProfile())
+	public := h.routers[0]
+	protected := h.routers[1]
+
+	public.POST("/login", h.Login())
+	public.POST("", h.CreateUser())
+
+	protected.GET("", h.GetAllUsers())
+	protected.GET("/:id", h.GetUserByID())
+	protected.PUT("/:id", h.UpdateUser())
+	protected.DELETE("/:id", h.DeleteUser())
+	protected.GET("/profile", h.GetProfile())
+	protected.PUT("/profile", h.UpdateProfile())
 }
 
 func (h *UserHandler) CreateUser() gin.HandlerFunc {
@@ -54,20 +64,17 @@ func (h *UserHandler) CreateUser() gin.HandlerFunc {
 		var payload dto.CreateUserRequest
 
 		if err := c.ShouldBindJSON(&payload); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			response.Error(c, http.StatusBadRequest, err.Error())
 			return
 		}
 
 		res, err := h.userService.CreateUser(payload)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			response.Error(c, http.StatusInternalServerError, err.Error())
 			return
 		}
 
-		c.JSON(http.StatusCreated, gin.H{
-			"message": "User created successfully",
-			"data":    res,
-		})
+		response.Success(c, http.StatusCreated, "User berhasil dibuat", res)
 	}
 }
 
@@ -98,17 +105,11 @@ func (h *UserHandler) GetAllUsers() gin.HandlerFunc {
 		)
 
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"error": err.Error(),
-			})
+			response.Error(c, http.StatusInternalServerError, err.Error())
 			return
 		}
 
-		c.JSON(http.StatusOK, gin.H{
-			"message":    "Users retrieved successfully",
-			"data":       res.Data,
-			"pagination": res.Pagination,
-		})
+		response.Success(c, http.StatusOK, "Daftar user berhasil diambil", res)
 	}
 }
 
@@ -117,20 +118,17 @@ func (h *UserHandler) GetUserByID() gin.HandlerFunc {
 		idParam := c.Param("id")
 		id, err := strconv.ParseUint(idParam, 10, 32)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+			response.Error(c, http.StatusBadRequest, "ID user tidak valid")
 			return
 		}
 
 		res, err := h.userService.GetUserByID(uint(id))
 		if err != nil {
-			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+			response.Error(c, http.StatusNotFound, err.Error())
 			return
 		}
 
-		c.JSON(http.StatusOK, gin.H{
-			"message": "User retrieved successfully",
-			"data":    res,
-		})
+		response.Success(c, http.StatusOK, "User berhasil diambil", res)
 	}
 }
 
@@ -139,26 +137,23 @@ func (h *UserHandler) UpdateUser() gin.HandlerFunc {
 		idParam := c.Param("id")
 		id, err := strconv.ParseUint(idParam, 10, 32)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+			response.Error(c, http.StatusBadRequest, "ID user tidak valid")
 			return
 		}
 
 		var payload dto.UpdateUserRequest
 		if err := c.ShouldBindJSON(&payload); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			response.Error(c, http.StatusBadRequest, err.Error())
 			return
 		}
 
 		res, err := h.userService.UpdateUser(uint(id), payload)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			response.Error(c, http.StatusBadRequest, err.Error())
 			return
 		}
 
-		c.JSON(http.StatusOK, gin.H{
-			"message": "User updated successfully",
-			"data":    res,
-		})
+		response.Success(c, http.StatusOK, "User berhasil diperbarui", res)
 	}
 }
 
@@ -167,18 +162,16 @@ func (h *UserHandler) DeleteUser() gin.HandlerFunc {
 		idParam := c.Param("id")
 		id, err := strconv.ParseUint(idParam, 10, 32)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+			response.Error(c, http.StatusBadRequest, "ID user tidak valid")
 			return
 		}
 
 		if err := h.userService.DeleteUser(uint(id)); err != nil {
-			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+			response.Error(c, http.StatusNotFound, err.Error())
 			return
 		}
 
-		c.JSON(http.StatusOK, gin.H{
-			"message": "User deleted successfully",
-		})
+		response.Success(c, http.StatusOK, "User berhasil dihapus", nil)
 	}
 }
 
@@ -189,24 +182,17 @@ func (h *UserHandler) Login() gin.HandlerFunc {
 		var payload dto.LoginRequest
 
 		if err := c.ShouldBindJSON(&payload); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error": err.Error(),
-			})
+			response.Error(c, http.StatusBadRequest, err.Error())
 			return
 		}
 
 		res, err := h.userService.Login(&payload)
 		if err != nil {
-			c.JSON(http.StatusUnauthorized, gin.H{
-				"error": err.Error(),
-			})
+			response.Error(c, http.StatusUnauthorized, err.Error())
 			return
 		}
 
-		c.JSON(http.StatusOK, gin.H{
-			"message": "Login berhasil",
-			"data":    res,
-		})
+		response.Success(c, http.StatusOK, "Login berhasil", res)
 	}
 }
 
@@ -216,32 +202,23 @@ func (h *UserHandler) GetProfile() gin.HandlerFunc {
 
 		value, exists := c.Get("user_id")
 		if !exists {
-			c.JSON(http.StatusUnauthorized, gin.H{
-				"error": "User tidak terautentikasi",
-			})
+			response.Error(c, http.StatusUnauthorized, "User tidak terautentikasi")
 			return
 		}
 
 		userID, ok := value.(uint)
 		if !ok {
-			c.JSON(http.StatusUnauthorized, gin.H{
-				"error": "User ID tidak valid",
-			})
+			response.Error(c, http.StatusUnauthorized, "User ID tidak valid")
 			return
 		}
 
 		res, err := h.userService.GetProfile(userID)
 		if err != nil {
-			c.JSON(http.StatusNotFound, gin.H{
-				"error": err.Error(),
-			})
+			response.Error(c, http.StatusNotFound, err.Error())
 			return
 		}
 
-		c.JSON(http.StatusOK, gin.H{
-			"message": "Profile retrieved successfully",
-			"data":    res,
-		})
+		response.Success(c, http.StatusOK, "Profile berhasil diambil", res)
 	}
 }
 
@@ -251,26 +228,20 @@ func (h *UserHandler) UpdateProfile() gin.HandlerFunc {
 
 		value, exists := c.Get("user_id")
 		if !exists {
-			c.JSON(http.StatusUnauthorized, gin.H{
-				"error": "User tidak terautentikasi",
-			})
+			response.Error(c, http.StatusUnauthorized, "User tidak terautentikasi")
 			return
 		}
 
 		userID, ok := value.(uint)
 		if !ok {
-			c.JSON(http.StatusUnauthorized, gin.H{
-				"error": "User ID tidak valid",
-			})
+			response.Error(c, http.StatusUnauthorized, "User ID tidak valid")
 			return
 		}
 
 		var payload dto.UpdateUserRequest
 
 		if err := c.ShouldBindJSON(&payload); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error": err.Error(),
-			})
+			response.Error(c, http.StatusBadRequest, err.Error())
 			return
 		}
 
@@ -280,15 +251,10 @@ func (h *UserHandler) UpdateProfile() gin.HandlerFunc {
 		)
 
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error": err.Error(),
-			})
+			response.Error(c, http.StatusBadRequest, err.Error())
 			return
 		}
 
-		c.JSON(http.StatusOK, gin.H{
-			"message": "Profile updated successfully",
-			"data":    res,
-		})
+		response.Success(c, http.StatusOK, "Profile berhasil diperbarui", res)
 	}
 }

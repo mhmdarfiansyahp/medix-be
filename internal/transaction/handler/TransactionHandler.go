@@ -2,12 +2,15 @@ package handler
 
 import (
 	"context"
-	"github.com/gin-gonic/gin"
-	"github.com/sirupsen/logrus"
-	"medix-be/internal/transaction/model/dto"
-	"medix-be/internal/transaction/service"
 	"net/http"
 	"strconv"
+
+	"medix-be/internal/common/response"
+	"medix-be/internal/transaction/model/dto"
+	"medix-be/internal/transaction/service"
+
+	"github.com/gin-gonic/gin"
+	"github.com/sirupsen/logrus"
 )
 
 type TransactionHandler struct {
@@ -53,28 +56,33 @@ func (h *TransactionHandler) Create() gin.HandlerFunc {
 		var req dto.CreateTransactionRequest
 
 		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error": err.Error(),
-			})
+			response.Error(c, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		userIDValue, exists := c.Get("user_id")
+		if !exists {
+			response.Error(c, http.StatusUnauthorized, "User tidak terautentikasi")
+			return
+		}
+
+		userID, ok := userIDValue.(uint)
+		if !ok {
+			response.Error(c, http.StatusUnauthorized, "User ID tidak valid")
 			return
 		}
 
 		res, err := h.transactionService.CreateTransaction(
-			req.IDUser,
+			userID,
 			req,
 		)
 
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error": err.Error(),
-			})
+			response.Error(c, http.StatusBadRequest, err.Error())
 			return
 		}
 
-		c.JSON(http.StatusCreated, gin.H{
-			"message": "Transaksi berhasil disimpan",
-			"data":    res,
-		})
+		response.Success(c, http.StatusCreated, "Transaksi berhasil disimpan", res)
 	}
 }
 
@@ -82,14 +90,11 @@ func (h *TransactionHandler) GetAll() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		res, err := h.transactionService.GetAllTransactions()
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			response.Error(c, http.StatusInternalServerError, err.Error())
 			return
 		}
 
-		c.JSON(http.StatusOK, gin.H{
-			"message": "Daftar transaksi berhasil diambil",
-			"data":    res,
-		})
+		response.Success(c, http.StatusOK, "Daftar transaksi berhasil diambil", res)
 	}
 }
 
@@ -99,25 +104,18 @@ func (h *TransactionHandler) GetByID() gin.HandlerFunc {
 		id, err := strconv.ParseUint(c.Param("id"), 10, 64)
 
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error": "ID transaksi tidak valid",
-			})
+			response.Error(c, http.StatusBadRequest, "ID transaksi tidak valid")
 			return
 		}
 
 		res, err := h.transactionService.GetTransactionByID(uint(id))
 
 		if err != nil {
-			c.JSON(http.StatusNotFound, gin.H{
-				"error": err.Error(),
-			})
+			response.Error(c, http.StatusNotFound, err.Error())
 			return
 		}
 
-		c.JSON(http.StatusOK, gin.H{
-			"message": "Transaksi berhasil diambil",
-			"data":    res,
-		})
+		response.Success(c, http.StatusOK, "Transaksi berhasil diambil", res)
 	}
 }
 
@@ -127,27 +125,21 @@ func (h *TransactionHandler) Cancel() gin.HandlerFunc {
 		id, err := strconv.ParseUint(c.Param("id"), 10, 64)
 
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error": "ID transaksi tidak valid",
-			})
+			response.Error(c, http.StatusBadRequest, "ID transaksi tidak valid")
 			return
 		}
 
 		userIDValue, exists := c.Get("user_id")
 
 		if !exists {
-			c.JSON(http.StatusUnauthorized, gin.H{
-				"error": "User tidak terautentikasi",
-			})
+			response.Error(c, http.StatusUnauthorized, "User tidak terautentikasi")
 			return
 		}
 
 		userID, ok := userIDValue.(uint)
 
 		if !ok {
-			c.JSON(http.StatusUnauthorized, gin.H{
-				"error": "User ID tidak valid",
-			})
+			response.Error(c, http.StatusUnauthorized, "User ID tidak valid")
 			return
 		}
 
@@ -157,15 +149,11 @@ func (h *TransactionHandler) Cancel() gin.HandlerFunc {
 		)
 
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error": err.Error(),
-			})
+			response.Error(c, http.StatusBadRequest, err.Error())
 			return
 		}
 
-		c.JSON(http.StatusOK, gin.H{
-			"message": "Transaksi berhasil dibatalkan",
-		})
+		response.Success(c, http.StatusOK, "Transaksi berhasil dibatalkan", nil)
 	}
 }
 
@@ -174,17 +162,13 @@ func (h *TransactionHandler) GetToday() gin.HandlerFunc {
 		userIDValue, exists := c.Get("user_id")
 
 		if !exists {
-			c.JSON(http.StatusUnauthorized, gin.H{
-				"error": "User tidak terautentikasi",
-			})
+			response.Error(c, http.StatusUnauthorized, "User tidak terautentikasi")
 			return
 		}
 
 		userID, ok := userIDValue.(uint)
 		if !ok {
-			c.JSON(http.StatusUnauthorized, gin.H{
-				"error": "User ID tidak valid",
-			})
+			response.Error(c, http.StatusUnauthorized, "User ID tidak valid")
 			return
 		}
 
@@ -192,16 +176,11 @@ func (h *TransactionHandler) GetToday() gin.HandlerFunc {
 			GetTodayTransactions(userID)
 
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"error": err.Error(),
-			})
+			response.Error(c, http.StatusInternalServerError, err.Error())
 			return
 		}
 
-		c.JSON(http.StatusOK, gin.H{
-			"message": "Riwayat transaksi hari ini berhasil diambil",
-			"data":    res,
-		})
+		response.Success(c, http.StatusOK, "Riwayat transaksi hari ini berhasil diambil", res)
 	}
 }
 
@@ -211,24 +190,17 @@ func (h *TransactionHandler) GetReceipt() gin.HandlerFunc {
 
 		id, err := strconv.ParseUint(idParam, 10, 64)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error": "ID transaksi tidak valid",
-			})
+			response.Error(c, http.StatusBadRequest, "ID transaksi tidak valid")
 			return
 		}
 
 		res, err := h.transactionService.GetReceipt(uint(id))
 
 		if err != nil {
-			c.JSON(http.StatusNotFound, gin.H{
-				"error": err.Error(),
-			})
+			response.Error(c, http.StatusNotFound, err.Error())
 			return
 		}
 
-		c.JSON(http.StatusOK, gin.H{
-			"message": "Struk transaksi berhasil diambil",
-			"data":    res,
-		})
+		response.Success(c, http.StatusOK, "Struk transaksi berhasil diambil", res)
 	}
 }

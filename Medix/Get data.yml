@@ -4,11 +4,15 @@ info:
   seq: 1
 
 http:
-  method: GET
+  method: POST
   url: "{{baseUrl}}/api/v1/users/login"
   body:
     type: json
-    data: ""
+    data: |-
+      {
+        "username":"budis",
+        "password":"rahasia123"
+      }
   auth: inherit
 
 runtime:

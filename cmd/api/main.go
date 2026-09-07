@@ -9,6 +9,7 @@ import (
 
 	"medix-be/internal/drug"
 	"medix-be/internal/medicine"
+	"medix-be/internal/middleware"
 	"medix-be/internal/report"
 	"medix-be/internal/transaction"
 	"medix-be/internal/user"
@@ -37,34 +38,38 @@ func main() {
 
 	apiV1 := r.Group("/api/v1")
 
+	authAPI := apiV1.Group("")
+	authAPI.Use(middleware.Auth())
+
 	medicine.StartApp(&medicine.ModuleConfig{
 		DB:     config.DB,
 		Logger: logger,
-		Router: apiV1,
+		Router: authAPI,
 	})
 
 	drug.StartApp(&drug.TypeDrugHandler{
 		DB:     config.DB,
 		Logger: logger,
-		Router: apiV1,
+		Router: authAPI,
 	})
 
 	user.StartApp(&user.UserHandler{
 		DB:     config.DB,
 		Logger: logger,
 		Router: apiV1,
+		AuthRouter:   authAPI,
 	})
 
 	transaction.StartApp(&transaction.TransactionHandler{
 		DB:     config.DB,
 		Logger: logger,
-		Router: apiV1,
+		Router: authAPI,
 	})
 
 	report.StartApp(&report.ReportHandler{
 		DB:     config.DB,
 		Logger: logger,
-		Router: apiV1,
+		Router: authAPI,
 	})
 
 	log.Println("Server Medix BE running on port 8080")

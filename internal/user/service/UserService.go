@@ -41,13 +41,18 @@ func (s *userService) CreateUser(req dto.CreateUserRequest) (*dto.UserResponse, 
 		return nil, errors.New("gagal memproses password")
 	}
 
+	status := req.Status
+	if status == "" {
+		status = "aktif"
+	}
+
 	user := model.User{
 		NamaUser: req.NamaUser,
 		NoTelp:   req.NoTelp,
 		Role:     req.Role,
 		Username: req.Username,
 		Password: string(hashedPassword),
-		Status:   req.Status,
+		Status:   statusToInt(string(status)),
 		Foto:     req.Foto,
 	}
 
@@ -66,7 +71,7 @@ func (s *userService) GetAllUsers(page int, limit int, search string, role strin
 		limit,
 		search,
 		role,
-		status,
+		normalizeStatusFilter(status),
 	)
 
 	if err != nil {
@@ -130,8 +135,8 @@ func (s *userService) UpdateUser(id uint, req dto.UpdateUserRequest) (*dto.UserR
 		}
 		user.Password = string(hashedPassword)
 	}
-	if req.Status != 0 {
-		user.Status = req.Status
+	if req.Status != "" {
+		user.Status = statusToInt(string(req.Status))
 	}
 	if req.Foto != "" {
 		user.Foto = req.Foto
@@ -249,7 +254,32 @@ func toUserResponse(user model.User) dto.UserResponse {
 		NoTelp:   user.NoTelp,
 		Role:     user.Role,
 		Username: user.Username,
-		Status:   user.Status,
+		Status:   intToStatus(user.Status),
 		Foto:     user.Foto,
+	}
+}
+
+func statusToInt(status string) int {
+	if status == "aktif" {
+		return 1
+	}
+	return 0
+}
+
+func intToStatus(status int) string {
+	if status == 1 {
+		return "aktif"
+	}
+	return "nonaktif"
+}
+
+func normalizeStatusFilter(status string) string {
+	switch status {
+	case "aktif":
+		return "1"
+	case "nonaktif":
+		return "0"
+	default:
+		return status
 	}
 }

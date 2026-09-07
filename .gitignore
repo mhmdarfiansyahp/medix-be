@@ -1,0 +1,54 @@
+# Environment / Secrets
+.env
+.env.*
+!.env.example
+
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules/
+
+# Build / Distribution
+dist/
+dist-ssr/
+
+# Go binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+
+# Go coverage
+coverage.out
+coverage.html
+
+# Temporary files
+*.tmp
+*.temp
+tmp/
+temp/
+
+# IDE / Editor
+.vscode/*
+!.vscode/extensions.json
+
+.idea/
+.DS_Store
+
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# OS
+Thumbs.db
+Desktop.ini

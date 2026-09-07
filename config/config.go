@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"log"
+	"os"
 
 	"github.com/spf13/viper"
 	"gorm.io/driver/postgres"
@@ -20,6 +21,13 @@ func LoadEnv() {
 	err := viper.ReadInConfig()
 	if err != nil {
 		log.Fatalf("Error loading config.yaml file: %v", err)
+	}
+
+	// Pastikan JWT_SECRET tersedia untuk package yang memakai os.Getenv
+	if os.Getenv("JWT_SECRET") == "" {
+		if secret := viper.GetString("jwt.secret"); secret != "" {
+			os.Setenv("JWT_SECRET", secret)
+		}
 	}
 }
 

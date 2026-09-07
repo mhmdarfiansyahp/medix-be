@@ -4,7 +4,9 @@ import (
 	"context"
 	"net/http"
 	"strconv"
+	"strings"
 
+	"medix-be/internal/common/response"
 	"medix-be/internal/medicine/model/dto"
 	"medix-be/internal/medicine/service"
 
@@ -60,20 +62,22 @@ func (h *MedicineHandler) CreateMedicine() gin.HandlerFunc {
 		var payload dto.CreateMedicineRequest
 
 		if err := c.ShouldBindJSON(&payload); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			response.Error(c, http.StatusBadRequest, err.Error())
 			return
 		}
 
 		res, err := h.medicineService.CreateMedicine(payload)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			if strings.Contains(err.Error(), "barcode") &&
+				(strings.Contains(err.Error(), "duplikat") || strings.Contains(err.Error(), "sudah digunakan") || strings.Contains(err.Error(), "23505")) {
+				response.Error(c, http.StatusConflict, err.Error())
+				return
+			}
+			response.Error(c, http.StatusInternalServerError, err.Error())
 			return
 		}
 
-		c.JSON(http.StatusCreated, gin.H{
-			"message": "Obat berhasil ditambahkan",
-			"data":    res,
-		})
+		response.Success(c, http.StatusCreated, "Obat berhasil ditambahkan", res)
 	}
 }
 
@@ -82,17 +86,17 @@ func (h *MedicineHandler) GetAllMedicines() gin.HandlerFunc {
 		var filter dto.MedicineFilterParams
 
 		if err := c.ShouldBindQuery(&filter); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			response.Error(c, http.StatusBadRequest, err.Error())
 			return
 		}
 
 		res, err := h.medicineService.GetAllMedicines(c.Request.Context(), filter)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			response.Error(c, http.StatusInternalServerError, err.Error())
 			return
 		}
 
-		c.JSON(http.StatusOK, gin.H{"data": res})
+		response.Success(c, http.StatusOK, "Obat berhasil diambil", res)
 	}
 }
 
@@ -101,17 +105,17 @@ func (h *MedicineHandler) GetMedicineByID() gin.HandlerFunc {
 		idParam := c.Param("id")
 		id, err := strconv.ParseUint(idParam, 10, 32)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "ID obat tidak valid"})
+			response.Error(c, http.StatusBadRequest, "ID obat tidak valid")
 			return
 		}
 
 		res, err := h.medicineService.GetMedicineByID(uint(id))
 		if err != nil {
-			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+			response.Error(c, http.StatusNotFound, err.Error())
 			return
 		}
 
-		c.JSON(http.StatusOK, gin.H{"data": res})
+		response.Success(c, http.StatusOK, "Obat berhasil diambil", res)
 	}
 }
 
@@ -119,17 +123,17 @@ func (h *MedicineHandler) GetMedicineByBarcode() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		barcode := c.Param("barcode")
 		if barcode == "" {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Barcode tidak boleh kosong"})
+			response.Error(c, http.StatusBadRequest, "Barcode tidak boleh kosong")
 			return
 		}
 
 		res, err := h.medicineService.GetMedicineByBarcode(c.Request.Context(), barcode)
 		if err != nil {
-			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+			response.Error(c, http.StatusNotFound, err.Error())
 			return
 		}
 
-		c.JSON(http.StatusOK, gin.H{"data": res})
+		response.Success(c, http.StatusOK, "Obat berhasil diambil", res)
 	}
 }
 
@@ -138,26 +142,28 @@ func (h *MedicineHandler) UpdateMedicine() gin.HandlerFunc {
 		idParam := c.Param("id")
 		id, err := strconv.ParseUint(idParam, 10, 32)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "ID obat tidak valid"})
+			response.Error(c, http.StatusBadRequest, "ID obat tidak valid")
 			return
 		}
 
 		var payload dto.UpdateMedicineRequest
 		if err := c.ShouldBindJSON(&payload); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			response.Error(c, http.StatusBadRequest, err.Error())
 			return
 		}
 
 		res, err := h.medicineService.UpdateMedicine(uint(id), payload)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			if strings.Contains(err.Error(), "barcode") &&
+				(strings.Contains(err.Error(), "sudah digunakan") || strings.Contains(err.Error(), "23505")) {
+				response.Error(c, http.StatusConflict, err.Error())
+				return
+			}
+			response.Error(c, http.StatusBadRequest, err.Error())
 			return
 		}
 
-		c.JSON(http.StatusOK, gin.H{
-			"message": "Obat berhasil diperbarui",
-			"data":    res,
-		})
+		response.Success(c, http.StatusOK, "Obat berhasil diperbarui", res)
 	}
 }
 
@@ -166,7 +172,7 @@ func (h *MedicineHandler) ToggleActiveStatus() gin.HandlerFunc {
 		idParam := c.Param("id")
 		id, err := strconv.ParseUint(idParam, 10, 32)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "ID obat tidak valid"})
+			response.Error(c, http.StatusBadRequest, "ID obat tidak valid")
 			return
 		}
 
@@ -175,17 +181,17 @@ func (h *MedicineHandler) ToggleActiveStatus() gin.HandlerFunc {
 		}
 
 		if err := c.ShouldBindJSON(&payload); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			response.Error(c, http.StatusBadRequest, err.Error())
 			return
 		}
 
 		err = h.medicineService.ToggleActiveStatus(c.Request.Context(), uint(id), payload.IsActive)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			response.Error(c, http.StatusInternalServerError, err.Error())
 			return
 		}
 
-		c.JSON(http.StatusOK, gin.H{"message": "Status obat berhasil diperbarui"})
+		response.Success(c, http.StatusOK, "Status obat berhasil diperbarui", nil)
 	}
 }
 
@@ -194,16 +200,16 @@ func (h *MedicineHandler) DeleteMedicine() gin.HandlerFunc {
 		idParam := c.Param("id")
 		id, err := strconv.ParseUint(idParam, 10, 32)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "ID obat tidak valid"})
+			response.Error(c, http.StatusBadRequest, "ID obat tidak valid")
 			return
 		}
 
 		if err := h.medicineService.DeleteMedicine(uint(id)); err != nil {
-			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+			response.Error(c, http.StatusNotFound, err.Error())
 			return
 		}
 
-		c.JSON(http.StatusOK, gin.H{"message": "Obat berhasil dihapus"})
+		response.Success(c, http.StatusOK, "Obat berhasil dihapus", nil)
 	}
 }
 
@@ -212,14 +218,11 @@ func (h *MedicineHandler) GetLowStock() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		res, err := h.medicineService.GetLowStockDrugs(c.Request.Context())
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			response.Error(c, http.StatusInternalServerError, err.Error())
 			return
 		}
 
-		c.JSON(http.StatusOK, gin.H{
-			"message": "Berhasil mengambil daftar obat dengan stok menipis",
-			"data":    res,
-		})
+		response.Success(c, http.StatusOK, "Berhasil mengambil daftar obat dengan stok menipis", res)
 	}
 }
 
@@ -234,14 +237,11 @@ func (h *MedicineHandler) GetExpiring() gin.HandlerFunc {
 
 		res, err := h.medicineService.GetExpiringDrugs(c.Request.Context(), days)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			response.Error(c, http.StatusInternalServerError, err.Error())
 			return
 		}
 
-		c.JSON(http.StatusOK, gin.H{
-			"message": "Berhasil mengambil daftar obat mendekati kadaluarsa",
-			"data":    res,
-		})
+		response.Success(c, http.StatusOK, "Berhasil mengambil daftar obat mendekati kadaluarsa", res)
 	}
 }
 
@@ -250,13 +250,10 @@ func (h *MedicineHandler) GetNotificationSummary() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		res, err := h.medicineService.GetNotificationSummary(c.Request.Context())
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			response.Error(c, http.StatusInternalServerError, err.Error())
 			return
 		}
 
-		c.JSON(http.StatusOK, gin.H{
-			"message": "Berhasil mengambil ringkasan notifikasi stok",
-			"data":    res,
-		})
+		response.Success(c, http.StatusOK, "Berhasil mengambil ringkasan notifikasi stok", res)
 	}
 }

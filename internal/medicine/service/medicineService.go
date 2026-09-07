@@ -189,7 +189,8 @@ func (s *medicineService) DeleteMedicine(id uint) error {
 		return errors.New("obat tidak ditemukan")
 	}
 
-	return s.repo.Delete(id)
+	// Soft delete: deaktivasi obat, riwayat transaksi tetap terjaga
+	return s.repo.UpdateStatus(context.Background(), id, 0)
 }
 
 func (s *medicineService) GetLowStockDrugs(ctx context.Context) ([]dto.LowStockResponse, error) {

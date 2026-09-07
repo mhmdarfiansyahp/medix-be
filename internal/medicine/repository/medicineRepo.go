@@ -108,6 +108,8 @@ func (r *medicineRepository) FindByBarcode(barcode string) (*model.Obat, error) 
 func (r *medicineRepository) Update(medicine *model.Obat) error {
 	return r.db.Model(&model.Obat{}).
 		Where("id_obat = ?", medicine.IDObat).
+		Select("*").
+		Omit("created_at").
 		Updates(medicine).Error
 }
 

@@ -12,8 +12,8 @@ http:
       {
         "nama_user": "Budi Santoso Edit",
         "no_telp": "089876543210",
-        "role": "owner",
-        "status": "nonaktif"
+        "role": "admin",
+        "status": "1"
       }
   auth: inherit
 
@@ -27,3 +27,4 @@ settings:
   timeout: 0
   followRedirects: true
   maxRedirects: 5
+  forwardAuthorizationHeader: true

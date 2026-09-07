@@ -74,19 +74,28 @@ func (s *reportService) ExportToExcel(ctx context.Context, params dto.ReportFilt
 
 	// Header Table
 	f.SetCellValue(sheet, "A1", "No")
-	f.SetCellValue(sheet, "B1", "Nama Obat")
-	f.SetCellValue(sheet, "C1", "Total Terjual")
-	f.SetCellValue(sheet, "D1", "Total Omset (Rp)")
+	f.SetCellValue(sheet, "B1", "ID Transaksi")
+	f.SetCellValue(sheet, "C1", "Tanggal")
+	f.SetCellValue(sheet, "D1", "Nama Obat")
+	f.SetCellValue(sheet, "E1", "Harga Satuan (Rp)")
+	f.SetCellValue(sheet, "F1", "Jumlah")
+	f.SetCellValue(sheet, "G1", "Subtotal (Rp)")
 
 	start, end := parseDates(params.StartDate, params.EndDate)
-	top, _ := s.repo.GetTopDrugs(ctx, start, end, 100) // Ambil data penjualan
+	rows, err := s.repo.GetExportTransactionData(ctx, start, end)
+	if err != nil {
+		return nil, err
+	}
 
-	for i, row := range top {
+	for i, row := range rows {
 		cellNum := i + 2
 		f.SetCellValue(sheet, fmt.Sprintf("A%d", cellNum), i+1)
-		f.SetCellValue(sheet, fmt.Sprintf("B%d", cellNum), row.NamaObat)
-		f.SetCellValue(sheet, fmt.Sprintf("C%d", cellNum), row.TotalTerjual)
-		f.SetCellValue(sheet, fmt.Sprintf("D%d", cellNum), row.TotalOmset)
+		f.SetCellValue(sheet, fmt.Sprintf("B%d", cellNum), row.IDTransaksi)
+		f.SetCellValue(sheet, fmt.Sprintf("C%d", cellNum), row.Tanggal.Format("2006-01-02 15:04:05"))
+		f.SetCellValue(sheet, fmt.Sprintf("D%d", cellNum), row.NamaObat)
+		f.SetCellValue(sheet, fmt.Sprintf("E%d", cellNum), row.HargaSatuan)
+		f.SetCellValue(sheet, fmt.Sprintf("F%d", cellNum), row.Jumlah)
+		f.SetCellValue(sheet, fmt.Sprintf("G%d", cellNum), row.Subtotal)
 	}
 
 	var buf bytes.Buffer

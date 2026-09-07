@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	"medix-be/internal/common/response"
 	"medix-be/internal/report/model/dto"
 	"medix-be/internal/report/service"
 
@@ -52,15 +53,18 @@ func (h *ReportHandler) RegisterRouter() {
 func (h *ReportHandler) GetSalesSummary() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var params dto.ReportFilterParams
-		c.ShouldBindQuery(&params)
-
-		res, err := h.reportService.GetSalesSummary(c.Request.Context(), params)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		if err := c.ShouldBindQuery(&params); err != nil {
+			response.Error(c, http.StatusBadRequest, err.Error())
 			return
 		}
 
-		c.JSON(http.StatusOK, gin.H{"data": res})
+		res, err := h.reportService.GetSalesSummary(c.Request.Context(), params)
+		if err != nil {
+			response.Error(c, http.StatusInternalServerError, err.Error())
+			return
+		}
+
+		response.Success(c, http.StatusOK, "Ringkasan penjualan berhasil diambil", res)
 	}
 }
 
@@ -68,15 +72,18 @@ func (h *ReportHandler) GetSalesSummary() gin.HandlerFunc {
 func (h *ReportHandler) GetDrugRanking() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var params dto.ReportFilterParams
-		c.ShouldBindQuery(&params)
-
-		res, err := h.reportService.GetDrugRanking(c.Request.Context(), params)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		if err := c.ShouldBindQuery(&params); err != nil {
+			response.Error(c, http.StatusBadRequest, err.Error())
 			return
 		}
 
-		c.JSON(http.StatusOK, gin.H{"data": res})
+		res, err := h.reportService.GetDrugRanking(c.Request.Context(), params)
+		if err != nil {
+			response.Error(c, http.StatusInternalServerError, err.Error())
+			return
+		}
+
+		response.Success(c, http.StatusOK, "Peringkat obat berhasil diambil", res)
 	}
 }
 
@@ -84,11 +91,14 @@ func (h *ReportHandler) GetDrugRanking() gin.HandlerFunc {
 func (h *ReportHandler) ExportExcel() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var params dto.ReportFilterParams
-		c.ShouldBindQuery(&params)
+		if err := c.ShouldBindQuery(&params); err != nil {
+			response.Error(c, http.StatusBadRequest, err.Error())
+			return
+		}
 
 		buf, err := h.reportService.ExportToExcel(c.Request.Context(), params)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			response.Error(c, http.StatusInternalServerError, err.Error())
 			return
 		}
 

@@ -1,33 +1,61 @@
 package dto
 
+import "encoding/json"
+
+// UserStatus accepts both string ("aktif"/"nonaktif") and numeric (1/0)
+// representations of the user status field, so callers sending either shape
+// do not trigger an unmarshalling error.
+type UserStatus string
+
+func (s *UserStatus) UnmarshalJSON(data []byte) error {
+	// Try numeric representation first (1 = aktif, 0 = nonaktif).
+	var num int
+	if err := json.Unmarshal(data, &num); err == nil {
+		if num == 1 {
+			*s = "aktif"
+		} else {
+			*s = "nonaktif"
+		}
+		return nil
+	}
+
+	// Fall back to the string representation.
+	var str string
+	if err := json.Unmarshal(data, &str); err != nil {
+		return err
+	}
+	*s = UserStatus(str)
+	return nil
+}
+
 type UserResponse struct {
 	IDUser   uint   `json:"id_user"`
 	NamaUser string `json:"nama_user"`
 	NoTelp   string `json:"no_telp"`
 	Role     string `json:"role"`
 	Username string `json:"username"`
-	Status   int    `json:"status"`
+	Status   string `json:"status"`
 	Foto     string `json:"foto"`
 }
 
 type CreateUserRequest struct {
-	NamaUser string `json:"nama_user" binding:"required,max=100"`
-	NoTelp   string `json:"no_telp" binding:"max=13"`
-	Role     string `json:"role" binding:"required,oneof=admin kasir owner"`
-	Username string `json:"username" binding:"required,max=50"`
-	Password string `json:"password" binding:"required,min=6"`
-	Status   int    `json:"status" binding:"omitempty,oneof=0 1"`
-	Foto     string `json:"foto"`
+	NamaUser string     `json:"nama_user" binding:"required,max=100"`
+	NoTelp   string     `json:"no_telp" binding:"max=13"`
+	Role     string     `json:"role" binding:"required,oneof=admin kasir owner"`
+	Username string     `json:"username" binding:"required,max=50"`
+	Password string     `json:"password" binding:"required,min=6"`
+	Status   UserStatus `json:"status" binding:"omitempty,oneof=aktif nonaktif"`
+	Foto     string     `json:"foto"`
 }
 
 type UpdateUserRequest struct {
-	NamaUser string `json:"nama_user" binding:"omitempty,max=100"`
-	NoTelp   string `json:"no_telp" binding:"omitempty,max=13"`
-	Role     string `json:"role" binding:"omitempty,oneof=admin kasir owner"`
-	Username string `json:"username" binding:"omitempty,max=50"`
-	Password string `json:"password" binding:"omitempty,min=6"`
-	Status   int    `json:"status" binding:"omitempty,oneof=0 1"`
-	Foto     string `json:"foto"`
+	NamaUser string     `json:"nama_user" binding:"omitempty,max=100"`
+	NoTelp   string     `json:"no_telp" binding:"omitempty,max=13"`
+	Role     string     `json:"role" binding:"omitempty,oneof=admin kasir owner"`
+	Username string     `json:"username" binding:"omitempty,max=50"`
+	Password string     `json:"password" binding:"omitempty,min=6"`
+	Status   UserStatus `json:"status" binding:"omitempty,oneof=aktif nonaktif"`
+	Foto     string     `json:"foto"`
 }
 
 type UserFilterRequest struct {
@@ -35,7 +63,7 @@ type UserFilterRequest struct {
 	Limit  int    `form:"limit"`
 	Search string `form:"search"`
 	Role   string `form:"role"`
-	Status int    `form:"status"`
+	Status string `form:"status"`
 }
 
 type PaginationResponse struct {

@@ -12,9 +12,10 @@ import (
 )
 
 type UserHandler struct {
-	DB     *gorm.DB
-	Logger *logrus.Logger
-	Router *gin.RouterGroup
+	DB         *gorm.DB
+	Logger     *logrus.Logger
+	Router     *gin.RouterGroup
+	AuthRouter *gin.RouterGroup
 }
 
 func StartApp(cfg *UserHandler) {
@@ -27,12 +28,17 @@ func StartApp(cfg *UserHandler) {
 		userRepo,
 		jwtSecret,
 	)
+
 	handlerContract := &handler.HandlerContract{
 		Logger: cfg.Logger,
 		Router: cfg.Router,
 	}
+	authContract := &handler.HandlerContract{
+		Logger: cfg.Logger,
+		Router: cfg.AuthRouter,
+	}
 
-	handler.StartUserHandler(handlerContract, &handler.UserHandlerProps{
+	handler.StartUserHandler(handlerContract, authContract, &handler.UserHandlerProps{
 		UserService: userSvc,
 	})
 }

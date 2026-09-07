@@ -35,7 +35,7 @@ func (r *reportRepository) GetSalesChart(ctx context.Context, startDate, endDate
 	err := r.db.WithContext(ctx).
 		Table("transaksi").
 		Select("TO_CHAR(created_at, ?) as periode, COALESCE(SUM(total_harga), 0) as total_penjualan, COUNT(id_transaksi) as jumlah_transaksi", dateFormat).
-		Where("created_at >= ? AND created_at <= ?", startDate, endDate).
+		Where("created_at >= ? AND created_at <= ? AND status = 1", startDate, endDate).
 		Group("periode").
 		Order("periode ASC").
 		Scan(&results).Error
@@ -52,7 +52,7 @@ func (r *reportRepository) GetTopDrugs(ctx context.Context, startDate, endDate t
 		Select("o.id_obat, o.nama_obat, COALESCE(SUM(dt.jumlah), 0) as total_terjual, COALESCE(SUM(dt.subtotal), 0) as total_omset").
 		Joins("JOIN obat o ON o.id_obat = dt.obat_id").
 		Joins("JOIN transaksi t ON t.id_transaksi = dt.transaksi_id").
-		Where("t.created_at >= ? AND t.created_at <= ?", startDate, endDate).
+		Where("t.created_at >= ? AND t.created_at <= ? AND t.status = 1", startDate, endDate).
 		Group("o.id_obat, o.nama_obat").
 		Order("total_terjual DESC").
 		Limit(limit).
@@ -69,7 +69,7 @@ func (r *reportRepository) GetBottomDrugs(ctx context.Context, startDate, endDat
 		Table("obat o").
 		Select("o.id_obat, o.nama_obat, COALESCE(SUM(dt.jumlah), 0) as total_terjual, COALESCE(SUM(dt.subtotal), 0) as total_omset").
 		Joins("LEFT JOIN detail_transaksi dt ON o.id_obat = dt.obat_id").
-		Joins("LEFT JOIN transaksi t ON t.id_transaksi = dt.transaksi_id AND t.created_at >= ? AND t.created_at <= ?", startDate, endDate).
+		Joins("LEFT JOIN transaksi t ON t.id_transaksi = dt.transaksi_id AND t.created_at >= ? AND t.created_at <= ? AND t.status = 1", startDate, endDate).
 		Where("o.status = 1"). // Hanya mengambil obat yang aktif
 		Group("o.id_obat, o.nama_obat").
 		Order("total_terjual ASC").
@@ -88,7 +88,7 @@ func (r *reportRepository) GetExportTransactionData(ctx context.Context, startDa
 		Select("t.id_transaksi, t.created_at as tanggal, o.nama_obat, dt.harga_satuan, dt.jumlah, dt.subtotal").
 		Joins("JOIN transaksi t ON t.id_transaksi = dt.transaksi_id").
 		Joins("JOIN obat o ON o.id_obat = dt.obat_id").
-		Where("t.created_at >= ? AND t.created_at <= ?", startDate, endDate).
+		Where("t.created_at >= ? AND t.created_at <= ? AND t.status = 1", startDate, endDate).
 		Order("t.created_at DESC").
 		Scan(&results).Error
 

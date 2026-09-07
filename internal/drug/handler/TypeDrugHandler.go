@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"medix-be/internal/common/response"
 	"medix-be/internal/drug/model/dto"
 	"medix-be/internal/drug/service"
 
@@ -54,20 +55,17 @@ func (h *TypeDrugHandler) CreateTypeDrug() gin.HandlerFunc {
 		var payload dto.CreateTypeDrugRequest
 
 		if err := c.ShouldBindJSON(&payload); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			response.Error(c, http.StatusBadRequest, err.Error())
 			return
 		}
 
 		res, err := h.typeDrugService.CreateTypeDrug(payload)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			response.Error(c, http.StatusInternalServerError, err.Error())
 			return
 		}
 
-		c.JSON(http.StatusCreated, gin.H{
-			"message": "Jenis obat berhasil ditambahkan",
-			"data":    res,
-		})
+		response.Success(c, http.StatusCreated, "Jenis obat berhasil ditambahkan", res)
 	}
 }
 
@@ -75,11 +73,11 @@ func (h *TypeDrugHandler) GetAllTypeDrugs() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		res, err := h.typeDrugService.GetAllTypeDrugs()
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			response.Error(c, http.StatusInternalServerError, err.Error())
 			return
 		}
 
-		c.JSON(http.StatusOK, gin.H{"data": res})
+		response.Success(c, http.StatusOK, "Jenis obat berhasil diambil", res)
 	}
 }
 
@@ -88,17 +86,17 @@ func (h *TypeDrugHandler) GetTypeDrugByID() gin.HandlerFunc {
 		idParam := c.Param("id")
 		id, err := strconv.ParseUint(idParam, 10, 32)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "ID jenis obat tidak valid"})
+			response.Error(c, http.StatusBadRequest, "ID jenis obat tidak valid")
 			return
 		}
 
 		res, err := h.typeDrugService.GetTypeDrugByID(uint(id))
 		if err != nil {
-			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+			response.Error(c, http.StatusNotFound, err.Error())
 			return
 		}
 
-		c.JSON(http.StatusOK, gin.H{"data": res})
+		response.Success(c, http.StatusOK, "Jenis obat berhasil diambil", res)
 	}
 }
 
@@ -107,26 +105,23 @@ func (h *TypeDrugHandler) UpdateTypeDrug() gin.HandlerFunc {
 		idParam := c.Param("id")
 		id, err := strconv.ParseUint(idParam, 10, 32)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "ID jenis obat tidak valid"})
+			response.Error(c, http.StatusBadRequest, "ID jenis obat tidak valid")
 			return
 		}
 
 		var payload dto.UpdateTypeDrugRequest
 		if err := c.ShouldBindJSON(&payload); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			response.Error(c, http.StatusBadRequest, err.Error())
 			return
 		}
 
 		res, err := h.typeDrugService.UpdateTypeDrug(uint(id), payload)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			response.Error(c, http.StatusBadRequest, err.Error())
 			return
 		}
 
-		c.JSON(http.StatusOK, gin.H{
-			"message": "Jenis obat berhasil diperbarui",
-			"data":    res,
-		})
+		response.Success(c, http.StatusOK, "Jenis obat berhasil diperbarui", res)
 	}
 }
 
@@ -135,15 +130,15 @@ func (h *TypeDrugHandler) DeleteTypeDrug() gin.HandlerFunc {
 		idParam := c.Param("id")
 		id, err := strconv.ParseUint(idParam, 10, 32)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "ID jenis obat tidak valid"})
+			response.Error(c, http.StatusBadRequest, "ID jenis obat tidak valid")
 			return
 		}
 
 		if err := h.typeDrugService.DeleteTypeDrug(uint(id)); err != nil {
-			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+			response.Error(c, http.StatusNotFound, err.Error())
 			return
 		}
 
-		c.JSON(http.StatusOK, gin.H{"message": "Jenis obat berhasil dihapus"})
+		response.Success(c, http.StatusOK, "Jenis obat berhasil dihapus", nil)
 	}
 }
