@@ -143,9 +143,21 @@ func (h *TransactionHandler) Cancel() gin.HandlerFunc {
 			return
 		}
 
+		roleValue, exists := c.Get("role")
+		if !exists {
+			response.Error(c, http.StatusUnauthorized, "user not authenticated")
+			return
+		}
+		userRole, ok := roleValue.(string)
+		if !ok {
+			response.Error(c, http.StatusUnauthorized, "invalid role")
+			return
+		}
+
 		err = h.transactionService.CancelTransaction(
 			uint(id),
 			userID,
+			userRole,
 		)
 
 		if err != nil {

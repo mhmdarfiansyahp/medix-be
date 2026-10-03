@@ -14,7 +14,7 @@ type TransactionService interface {
 	CreateTransaction(userID uint, req dto.CreateTransactionRequest) (*dto.TransactionResponse, error)
 	GetAllTransactions() ([]dto.TransactionResponse, error)
 	GetTransactionByID(id uint) (*dto.TransactionResponse, error)
-	CancelTransaction(id uint, userID uint) error
+CancelTransaction(id uint, userID uint, userRole string) error
 	GetTodayTransactions(userID uint) (*dto.TodayTransactionResponse, error)
 	GetReceipt(id uint) (*dto.ReceiptResponse, error)
 }
@@ -171,7 +171,7 @@ func toTransactionResponse(t model.Transaksi) dto.TransactionResponse {
 	}
 }
 
-func (s *transactionService) CancelTransaction(id uint, userID uint) error {
+func (s *transactionService) CancelTransaction(id uint, userID uint, userRole string) error {
 	tx := s.repo.GetDB().Begin()
 
 	if tx.Error != nil {
@@ -191,27 +191,31 @@ func (s *transactionService) CancelTransaction(id uint, userID uint) error {
 		return errors.New("transaksi tidak ditemukan")
 	}
 
-	// Ensure transaction belongs to the logged-in cashier
-	if transaksi.IDUser != userID {
-		tx.Rollback()
-		return errors.New("you do not have access to cancel this transaction")
-	}
-
 	// Already cancelled
 	if transaksi.Status == model.StatusTransaksiDibatalkan {
 		tx.Rollback()
 		return errors.New("transaction already cancelled")
 	}
 
-	// Only today's transactions
-	now := time.Now()
+	isAdmin := userRole == "admin" || userRole == "owner"
 
-	if transaksi.TglTransaksi.Year() != now.Year() ||
-		transaksi.TglTransaksi.YearDay() != now.YearDay() {
+	// Kasir (non-admin): hanya boleh batalkan transaksi miliknya sendiri
+	if !isAdmin && transaksi.IDUser != userID {
 		tx.Rollback()
-		return errors.New(
-			"transaction can only be cancelled on the same day",
-		)
+		return errors.New("you do not have access to cancel this transaction")
+	}
+
+	// Kasir: hanya transaksi hari ini yang dapat dibatalkan.
+	// Admin/owner dapat membatalkan transaksi hari apa pun (approval).
+	if !isAdmin {
+		now := time.Now()
+		if transaksi.TglTransaksi.Year() != now.Year() ||
+			transaksi.TglTransaksi.YearDay() != now.YearDay() {
+			tx.Rollback()
+			return errors.New(
+				"transaction can only be cancelled on the same day",
+			)
+		}
 	}
 
 	// Restore stock
