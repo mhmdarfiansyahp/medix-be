@@ -12,6 +12,7 @@ import (
 
 type TransactionService interface {
 	CreateTransaction(userID uint, req dto.CreateTransactionRequest) (*dto.TransactionResponse, error)
+	AddToCart(userID uint, req dto.AddToCartRequest) (*dto.TransactionResponse, error)
 	GetAllTransactions() ([]dto.TransactionResponse, error)
 	GetTransactionByID(id uint) (*dto.TransactionResponse, error)
 CancelTransaction(id uint, userID uint, userRole string) error
@@ -124,6 +125,98 @@ func (s *transactionService) CreateTransaction(userID uint, req dto.CreateTransa
 	transaksi.Details = detailsEntities
 	res := toTransactionResponse(transaksi)
 	return &res, nil
+}
+
+func (s *transactionService) AddToCart(userID uint, req dto.AddToCartRequest) (*dto.TransactionResponse, error) {
+	var transaksi model.Transaksi
+
+	// Find today's transaction for this user (if any)
+	var existingTransaksi model.Transaksi
+	error := s.repo.GetDB().
+		Preload("Details").
+		Where("id_user = ? AND status = ?", userID, model.StatusTransaksiSelesai).
+		Where("DATE(tgl_transaksi) = CURRENT_DATE").
+		First(&existingTransaksi).
+		Error
+
+	if error == nil && !errors.Is(error, gorm.ErrRecordNotFound) {
+			// Found existing transaction
+			transaksi = existingTransaksi
+		} else {
+			// Create new transaction
+			transaksi = model.Transaksi{
+				IDUser:  userID,
+				Status:  model.StatusTransaksiSelesai,
+			}
+			if err := s.repo.Create(s.repo.GetDB(), &transaksi); err != nil {
+				return nil, fmt.Errorf("failed to create transaction: %w", err)
+			}
+		}
+
+	// Add medicine to transaction
+	obat, err := s.repo.FindObatByID(s.repo.GetDB(), req.IDObat)
+	if err != nil {
+		return nil, fmt.Errorf("medicine not found: %w", err)
+	}
+
+	// Ensure medicine is active
+	if obat.Status != 1 {
+		return nil, fmt.Errorf("medicine %s is currently inactive", obat.NamaObat)
+	}
+
+	// Check if medicine already in this transaction
+	for _, detail := range transaksi.Details {
+		if detail.IDObat == req.IDObat {
+			return nil, errors.New("the same medicine cannot be added more than once")
+		}
+	}
+
+	// Check stock
+	if obat.Stok < req.Jumlah {
+		return nil, fmt.Errorf("insufficient stock for medicine %s", obat.NamaObat)
+	}
+
+	// Calculate price
+	hargaSatuan := obat.Harga
+	subtotal := float64(req.Jumlah) * hargaSatuan
+	transaksi.TotalHarga += subtotal
+
+	// Update transaction total
+	if err := s.repo.UpdateStatus(s.repo.GetDB(), transaksi.IDTransaksi, model.StatusTransaksiSelesai); err != nil {
+		return nil, fmt.Errorf("failed to update transaction total: %w", err)
+	}
+
+	// Create detail entity
+	detailEntity := model.DetailPembelian{
+		IDTransaksi: transaksi.IDTransaksi,
+		IDObat:      req.IDObat,
+		Jumlah:      req.Jumlah,
+		HargaSatuan: hargaSatuan,
+		Subtotal:    subtotal,
+	}
+
+	// Save detail
+	if err := s.repo.CreateDetail(s.repo.GetDB(), &detailEntity); err != nil {
+		return nil, fmt.Errorf("failed to add medicine to cart: %w", err)
+	}
+
+	// Update stock
+	if err := s.repo.UpdateStokObat(s.repo.GetDB(), req.IDObat, req.Jumlah); err != nil {
+		// Rollback detail
+		s.repo.GetDB().Delete(&detailEntity)
+		if err := s.repo.UpdateStatus(s.repo.GetDB(), transaksi.IDTransaksi, transaksi.Status); err != nil {
+			return nil, fmt.Errorf("failed to rollback transaction: %w", err)
+		}
+		return nil, fmt.Errorf("failed to update stock: %w", err)
+	}
+
+	// Reload transaction to get updated details
+	if err := s.repo.GetDB().Preload("Details").First(&transaksi, transaksi.IDTransaksi).Error; err != nil {
+		return nil, fmt.Errorf("failed to reload transaction: %w", err)
+	}
+
+	t := toTransactionResponse(transaksi)
+	return &t, nil
 }
 
 func (s *transactionService) GetAllTransactions() ([]dto.TransactionResponse, error) {

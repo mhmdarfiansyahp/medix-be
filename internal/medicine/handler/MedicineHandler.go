@@ -9,20 +9,27 @@ import (
 	"medix-be/internal/common/response"
 	"medix-be/internal/medicine/model/dto"
 	"medix-be/internal/medicine/service"
+	transDto "medix-be/internal/transaction/model/dto"
 
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 )
 
 type MedicineHandler struct {
-	backgroundContext context.Context
-	logger            *logrus.Logger
-	router            *gin.RouterGroup
-	medicineService   service.MedicineService
+	backgroundContext  context.Context
+	logger             *logrus.Logger
+	router             *gin.RouterGroup
+	medicineService    service.MedicineService
+	transactionService TransactionService
 }
 
 type MedicineHandlerProps struct {
-	MedicineService service.MedicineService
+	MedicineService    service.MedicineService
+	TransactionService TransactionService
+}
+
+type TransactionService interface {
+	AddToCart(userID uint, req transDto.AddToCartRequest) (*transDto.TransactionResponse, error)
 }
 
 type HandlerContract struct {
@@ -33,10 +40,11 @@ type HandlerContract struct {
 
 func StartMedicineHandler(contract *HandlerContract, props *MedicineHandlerProps) *MedicineHandler {
 	handler := &MedicineHandler{
-		backgroundContext: contract.BackgroundContext,
-		logger:            contract.Logger,
-		router:            contract.Router.Group("/medicines"),
-		medicineService:   props.MedicineService,
+		backgroundContext:  contract.BackgroundContext,
+		logger:             contract.Logger,
+		router:             contract.Router.Group("/medicines"),
+		medicineService:    props.MedicineService,
+		transactionService: props.TransactionService,
 	}
 
 	handler.RegisterRouter()
@@ -52,6 +60,7 @@ func (h *MedicineHandler) RegisterRouter() {
 	h.router.GET("", h.GetAllMedicines())
 	h.router.GET("/:id", h.GetMedicineByID())
 	h.router.GET("/barcode/:barcode", h.GetMedicineByBarcode())
+	h.router.POST("/scan", h.ScanMedicine())
 	h.router.PUT("/:id", h.UpdateMedicine())
 	h.router.PATCH("/:id/status", h.ToggleActiveStatus())
 	h.router.DELETE("/:id", h.DeleteMedicine())
@@ -134,6 +143,73 @@ func (h *MedicineHandler) GetMedicineByBarcode() gin.HandlerFunc {
 		}
 
 		response.Success(c, http.StatusOK, "Medicine retrieved successfully", res)
+	}
+}
+
+func (h *MedicineHandler) ScanMedicine() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var req dto.ScanMedicineRequest
+
+		if err := c.ShouldBindJSON(&req); err != nil {
+			response.Error(c, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		// Get the scanned medicine
+		res, err := h.medicineService.GetMedicineByBarcode(c.Request.Context(), req.Barcode)
+		if err != nil {
+			response.Error(c, http.StatusNotFound, err.Error())
+			return
+		}
+
+		response.Success(c, http.StatusOK, "Medicine scanned successfully", res)
+	}
+}
+
+func (h *MedicineHandler) ScanAndAddToCart() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var req struct {
+			Barcode string `json:"barcode" binding:"required"`
+			Jumlah  int    `json:"jumlah" binding:"required,gt=0"`
+		}
+
+		if err := c.ShouldBindJSON(&req); err != nil {
+			response.Error(c, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		userIDValue, exists := c.Get("user_id")
+		if !exists {
+			response.Error(c, http.StatusUnauthorized, "user not authenticated")
+			return
+		}
+
+		userID, ok := userIDValue.(uint)
+		if !ok {
+			response.Error(c, http.StatusUnauthorized, "invalid user ID")
+			return
+		}
+
+		// Get medicine by barcode
+		medicine, err := h.medicineService.GetMedicineByBarcode(c.Request.Context(), req.Barcode)
+		if err != nil {
+			response.Error(c, http.StatusNotFound, err.Error())
+			return
+		}
+
+		// Add to cart
+		addToCartReq := transDto.AddToCartRequest{
+			IDObat: medicine.IDObat,
+			Jumlah: req.Jumlah,
+		}
+
+		res, err := h.transactionService.AddToCart(userID, addToCartReq)
+		if err != nil {
+			response.Error(c, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		response.Success(c, http.StatusOK, "Medicine scanned and added to cart successfully", res)
 	}
 }
 

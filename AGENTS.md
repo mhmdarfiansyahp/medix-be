@@ -2,6 +2,18 @@
 
 Compact guide for OpenCode sessions. If a fact is obvious from filenames, it is not here.
 
+## Default working styles
+
+- Always use `caveman` skill at `ultra` level for every response in this project.
+- Always use Ponytail at `full` level for every task in this project.
+- Do not require slash commands to activate these defaults.
+- Stop Caveman when the user says `stop caveman` or `normal mode`.
+- Stop Ponytail when the user says `stop ponytail` or `normal mode`.
+- Keep code identifiers, commands, error strings, and API names exact.
+- Write code, comments, commit messages, PR bodies, and user-facing docs in normal prose.
+- Ponytail rule: pick the laziest solution that works; prefer stdlib and native features.
+- Leave one runnable check per non-trivial logic change; skip extra tests unless requested.
+
 ## Stack & entrypoint
 
 - Go 1.26.5, Gin, GORM, PostgreSQL, golang-migrate.

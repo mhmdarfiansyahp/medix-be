@@ -13,6 +13,17 @@ type MedicineFilterParams struct {
 	StatusStok  string `form:"status_stok"`
 	Barcode     string `form:"barcode"`
 }
+
+type ScanMedicineRequest struct {
+	Barcode string `json:"barcode" binding:"required"`
+}
+
+type ScanMedicineResponse struct {
+	Success      bool              `json:"success"`
+	Medicine     *MedicineResponse `json:"medicine,omitempty"`
+	Message      string            `json:"message,omitempty"`
+	ExistsInCart bool             `json:"exists_in_cart,omitempty"`
+}
 type CreateMedicineRequest struct {
 	NamaObat      string  `json:"nama_obat" binding:"required,max=150"`
 	MerkObat      string  `json:"merk_obat" binding:"max=100"`

@@ -22,10 +22,12 @@ func StartApp(cfg *UserHandler) {
 	cfg.Logger.Info("User module starting...")
 
 	userRepo := repository.NewUserRepository(cfg.DB)
+	sessionRepo := repository.NewSessionRepository(cfg.DB)
 	jwtSecret := os.Getenv("JWT_SECRET")
 
 	userSvc := service.NewUserService(
 		userRepo,
+		sessionRepo,
 		jwtSecret,
 	)
 

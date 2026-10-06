@@ -12,6 +12,17 @@ type CreateTransactionRequest struct {
 	Details []DetailItemRequest `json:"details" binding:"required,gt=0,dive"`
 }
 
+type AddToCartRequest struct {
+	IDObat uint `json:"id_obat" binding:"required"`
+	Jumlah int  `json:"jumlah" binding:"required,gt=0"`
+}
+
+type AddToCartResponse struct {
+	Success      bool                `json:"success"`
+	Transaction  *TransactionResponse `json:"transaction,omitempty"`
+	Message      string              `json:"message,omitempty"`
+}
+
 type DetailItemResponse struct {
 	IDDetail    uint    `json:"id_detail"`
 	IDObat      uint    `json:"id_obat"`

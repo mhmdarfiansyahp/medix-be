@@ -62,10 +62,10 @@ type UpdateUserRequest struct {
 }
 
 type UpdateProfileRequest struct {
-	NamaUser string `form:"nama_user" binding:"omitempty,max=100"`
-	NoTelp   string `form:"no_telp" binding:"omitempty,max=13"`
-	Username string `form:"username" binding:"omitempty,max=50"`
-	Foto     string `form:"foto"`
+    NamaUser string `json:"nama_user" form:"nama_user" binding:"omitempty,max=100"`
+    NoTelp   string `json:"no_telp" form:"no_telp" binding:"omitempty,max=13"`
+    Username string `json:"username" form:"username" binding:"omitempty,max=50"`
+    Foto     string `json:"foto" form:"foto"`
 }
 
 func (r *UpdateProfileRequest) ValidateNoTelp() bool {
@@ -103,6 +103,20 @@ type LoginRequest struct {
 }
 
 type LoginResponse struct {
-	Token *string       `json:"token"`
-	User  *UserResponse `json:"user"`
+	Token        *string       `json:"token"`
+	RefreshToken *string       `json:"refresh_token"`
+	User         *UserResponse `json:"user"`
+}
+
+type RefreshRequest struct {
+	RefreshToken string `json:"refresh_token" binding:"required"`
+}
+
+type RefreshResponse struct {
+	Token        *string `json:"token"`
+	RefreshToken *string `json:"refresh_token"`
+}
+
+type LogoutRequest struct {
+	RefreshToken string `json:"refresh_token" binding:"required"`
 }

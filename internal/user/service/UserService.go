@@ -1,6 +1,8 @@
 package service
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
 	"math"
 	"medix-be/internal/user/model/dto"
@@ -16,6 +18,8 @@ import (
 type UserService interface {
 	CreateUser(req dto.CreateUserRequest) (*dto.UserResponse, error)
 	Login(req *dto.LoginRequest) (*dto.LoginResponse, error)
+	RefreshToken(req *dto.RefreshRequest) (*dto.RefreshResponse, error)
+	Logout(req *dto.LogoutRequest) error
 
 	GetAllUsers(page int, limit int, search string, role string, status string) (*dto.UserListResponse, error)
 	GetUserByID(id uint) (*dto.UserResponse, error)
@@ -24,15 +28,17 @@ type UserService interface {
 	GetProfile(id uint) (*dto.UserResponse, error)
 	UpdateProfile(id uint, req *dto.UpdateProfileRequest) (*dto.UserResponse, error)
 	UpdateProfilePhoto(id uint, fotoPath string) (*dto.UserResponse, error)
+	GetProfileByUsername(username string) (*dto.UserResponse, error)
 }
 
 type userService struct {
-	repo      repository.UserRepository
-	jwtSecret string
+	repo        repository.UserRepository
+	sessionRepo repository.SessionRepository
+	jwtSecret   string
 }
 
-func NewUserService(repo repository.UserRepository, jwtSecret string) UserService {
-	return &userService{repo: repo, jwtSecret: jwtSecret}
+func NewUserService(repo repository.UserRepository, sessionRepo repository.SessionRepository, jwtSecret string) UserService {
+	return &userService{repo: repo, sessionRepo: sessionRepo, jwtSecret: jwtSecret}
 }
 
 func (s *userService) CreateUser(req dto.CreateUserRequest) (*dto.UserResponse, error) {
@@ -192,28 +198,111 @@ func (s *userService) Login(req *dto.LoginRequest) (*dto.LoginResponse, error) {
 		return nil, errors.New("username or password incorrect")
 	}
 
+	tokenString, err := s.generateAccessToken(user)
+	if err != nil {
+		return nil, err
+	}
+
+	refreshTokenString, err := generateRefreshToken()
+	if err != nil {
+		return nil, errors.New("failed to create refresh token")
+	}
+
+	session := &model.Session{
+		IDUser:       user.IDUser,
+		RefreshToken: refreshTokenString,
+		ExpiresAt:    time.Now().Add(30 * 24 * time.Hour),
+	}
+	if err := s.sessionRepo.Create(session); err != nil {
+		return nil, errors.New("failed to create session")
+	}
+
+	userResponse := toUserResponse(*user)
+
+	return &dto.LoginResponse{
+		Token:        &tokenString,
+		RefreshToken: &refreshTokenString,
+		User:         &userResponse,
+	}, nil
+}
+
+func (s *userService) RefreshToken(req *dto.RefreshRequest) (*dto.RefreshResponse, error) {
+	session, err := s.sessionRepo.FindByRefreshToken(req.RefreshToken)
+	if err != nil {
+		return nil, errors.New("invalid or expired refresh token")
+	}
+
+	if err := s.sessionRepo.RevokeByID(session.IDSession); err != nil {
+		return nil, errors.New("failed to revoke old session")
+	}
+
+	user, err := s.repo.FindByID(session.IDUser)
+	if err != nil {
+		return nil, errors.New("user not found")
+	}
+
+	if user.Status == 0 {
+		return nil, errors.New("user is inactive")
+	}
+
+	tokenString, err := s.generateAccessToken(user)
+	if err != nil {
+		return nil, err
+	}
+
+	newRefreshToken, err := generateRefreshToken()
+	if err != nil {
+		return nil, errors.New("failed to create refresh token")
+	}
+
+	newSession := &model.Session{
+		IDUser:       user.IDUser,
+		RefreshToken: newRefreshToken,
+		ExpiresAt:    time.Now().Add(30 * 24 * time.Hour),
+	}
+	if err := s.sessionRepo.Create(newSession); err != nil {
+		return nil, errors.New("failed to create session")
+	}
+
+	return &dto.RefreshResponse{
+		Token:        &tokenString,
+		RefreshToken: &newRefreshToken,
+	}, nil
+}
+
+func (s *userService) Logout(req *dto.LogoutRequest) error {
+	session, err := s.sessionRepo.FindByRefreshToken(req.RefreshToken)
+	if err != nil {
+		return errors.New("session not found or already revoked")
+	}
+	return s.sessionRepo.RevokeByID(session.IDSession)
+}
+
+func (s *userService) generateAccessToken(user *model.User) (string, error) {
 	token := jwt.NewWithClaims(
 		jwt.SigningMethodHS256,
 		jwt.MapClaims{
 			"user_id":  user.IDUser,
 			"username": user.Username,
 			"role":     user.Role,
-			"exp":      time.Now().Add(8 * time.Hour).Unix(),
+			"exp":      time.Now().Add(6 * time.Hour).Unix(),
 			"iat":      time.Now().Unix(),
 		},
 	)
 
 	tokenString, err := token.SignedString([]byte(s.jwtSecret))
 	if err != nil {
-		return nil, errors.New("failed to create token")
+		return "", errors.New("failed to create token")
 	}
+	return tokenString, nil
+}
 
-	userResponse := toUserResponse(*user)
-
-	return &dto.LoginResponse{
-		Token: &tokenString,
-		User:  &userResponse,
-	}, nil
+func generateRefreshToken() (string, error) {
+	bytes := make([]byte, 32)
+	if _, err := rand.Read(bytes); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(bytes), nil
 }
 
 func (s *userService) UpdateProfile(id uint, req *dto.UpdateProfileRequest) (*dto.UserResponse, error) {
@@ -262,6 +351,18 @@ func (s *userService) UpdateProfilePhoto(id uint, fotoPath string) (*dto.UserRes
 
 	if oldPath != "" {
 		os.Remove(oldPath)
+	}
+
+	res := toUserResponse(*user)
+	return &res, nil
+}
+
+func (s *userService) GetProfileByUsername(username string) (*dto.UserResponse, error) {
+
+	user, err := s.repo.FindByUsername(username)
+
+	if err != nil {
+		return nil, errors.New("profile not found")
 	}
 
 	res := toUserResponse(*user)

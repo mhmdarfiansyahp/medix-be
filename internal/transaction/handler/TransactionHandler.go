@@ -44,6 +44,7 @@ func StartTransactionHandler(contract *HandlerContract, props *TransactionHandle
 
 func (h *TransactionHandler) RegisterRouter() {
 	h.router.POST("", h.Create())
+	h.router.POST("/add-to-cart", h.AddToCart())
 	h.router.GET("", h.GetAll())
 	h.router.GET("/today", h.GetToday())
 	h.router.GET("/:id", h.GetByID())
@@ -83,6 +84,38 @@ func (h *TransactionHandler) Create() gin.HandlerFunc {
 		}
 
 		response.Success(c, http.StatusCreated, "Transaction saved successfully", res)
+	}
+}
+
+func (h *TransactionHandler) AddToCart() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var req dto.AddToCartRequest
+
+		if err := c.ShouldBindJSON(&req); err != nil {
+			response.Error(c, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		userIDValue, exists := c.Get("user_id")
+		if !exists {
+			response.Error(c, http.StatusUnauthorized, "user not authenticated")
+			return
+		}
+
+		userID, ok := userIDValue.(uint)
+		if !ok {
+			response.Error(c, http.StatusUnauthorized, "invalid user ID")
+			return
+		}
+
+		res, err := h.transactionService.AddToCart(userID, req)
+
+		if err != nil {
+			response.Error(c, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		response.Success(c, http.StatusOK, "Medicine added to cart successfully", res)
 	}
 }
 

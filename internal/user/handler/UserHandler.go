@@ -54,6 +54,8 @@ func (h *UserHandler) RegisterRouter() {
 
 	public.POST("/login", h.Login())
 	public.POST("", h.CreateUser())
+	public.POST("/refresh", h.RefreshToken())
+	public.POST("/logout", h.Logout())
 
 	protected.GET("", h.GetAllUsers())
 	protected.GET("/:id", h.GetUserByID())
@@ -201,6 +203,41 @@ func (h *UserHandler) Login() gin.HandlerFunc {
 	}
 }
 
+func (h *UserHandler) RefreshToken() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var payload dto.RefreshRequest
+		if err := c.ShouldBindJSON(&payload); err != nil {
+			response.Error(c, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		res, err := h.userService.RefreshToken(&payload)
+		if err != nil {
+			response.Error(c, http.StatusUnauthorized, err.Error())
+			return
+		}
+
+		response.Success(c, http.StatusOK, "Token refreshed successfully", res)
+	}
+}
+
+func (h *UserHandler) Logout() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var payload dto.LogoutRequest
+		if err := c.ShouldBindJSON(&payload); err != nil {
+			response.Error(c, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		if err := h.userService.Logout(&payload); err != nil {
+			response.Error(c, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		response.Success(c, http.StatusOK, "Logout successful", nil)
+	}
+}
+
 func (h *UserHandler) GetProfile() gin.HandlerFunc {
 
 	return func(c *gin.Context) {
@@ -245,7 +282,7 @@ func (h *UserHandler) UpdateProfile() gin.HandlerFunc {
 
 		var payload dto.UpdateProfileRequest
 
-		if err := c.ShouldBind(&payload); err != nil {
+		if err := c.ShouldBindJSON(&payload); err != nil {
 			response.Error(c, http.StatusBadRequest, err.Error())
 			return
 		}
