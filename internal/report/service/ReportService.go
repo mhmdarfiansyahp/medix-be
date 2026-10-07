@@ -4,11 +4,14 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
 	"time"
 
 	"medix-be/internal/report/model/dto"
 	"medix-be/internal/report/repository"
 
+	"github.com/google/uuid"
 	"github.com/jung-kurt/gofpdf"
 	"github.com/xuri/excelize/v2"
 )
@@ -18,6 +21,13 @@ type ReportService interface {
 	GetDrugRanking(ctx context.Context, params dto.ReportFilterParams) (*dto.DrugRankingResponse, error)
 	ExportToExcel(ctx context.Context, params dto.ReportFilterParams) (*bytes.Buffer, error)
 	ExportToPDF(ctx context.Context, params dto.ReportFilterParams) (*bytes.Buffer, error)
+
+	// Async export methods
+	ExportToExcelAsync(ctx context.Context, params dto.ReportFilterParams, userID uint) (string, error)
+	ExportToPDFAsync(ctx context.Context, params dto.ReportFilterParams, userID uint) (string, error)
+	GetExportStatus(exportID string) (*dto.ExportJobStatus, error)
+	GenerateExcelAsync(exportID string, ctx context.Context, params dto.ReportFilterParams)
+	GeneratePDFAsync(exportID string, ctx context.Context, params dto.ReportFilterParams)
 }
 
 type reportService struct {
@@ -26,6 +36,11 @@ type reportService struct {
 
 func NewReportService(repo repository.ReportRepository) ReportService {
 	return &reportService{repo: repo}
+}
+
+// generateExportID generates a unique export ID
+func generateExportID() string {
+	return "export_" + uuid.New().String()
 }
 
 func (s *reportService) GetSalesSummary(ctx context.Context, params dto.ReportFilterParams) (*dto.SalesSummaryResponse, error) {
@@ -185,4 +200,148 @@ func parseDates(startDate, endDate string) (time.Time, time.Time) {
 
 	end = time.Date(end.Year(), end.Month(), end.Day(), 23, 59, 59, 0, end.Location())
 	return start, end
+}
+
+// ExportToExcelAsync starts an async Excel export job
+func (s *reportService) ExportToExcelAsync(ctx context.Context, params dto.ReportFilterParams, userID uint) (string, error) {
+	exportID := "export_" + uuid.New().String()
+
+	// Create export job
+	job := &repository.ExportJob{
+		ID:         exportID,
+		UserID:     userID,
+		ExportType: "excel",
+		Status:     "pending",
+		CreatedAt:  time.Now(),
+	}
+
+	if err := s.repo.CreateExportJob(job); err != nil {
+		return "", err
+	}
+
+	// Start background generation
+	go s.GenerateExcelAsync(exportID, ctx, params)
+
+	return exportID, nil
+}
+
+// ExportToPDFAsync starts an async PDF export job
+func (s *reportService) ExportToPDFAsync(ctx context.Context, params dto.ReportFilterParams, userID uint) (string, error) {
+	exportID := "export_" + uuid.New().String()
+
+	// Create export job
+	job := &repository.ExportJob{
+		ID:         exportID,
+		UserID:     userID,
+		ExportType: "pdf",
+		Status:     "pending",
+		CreatedAt:  time.Now(),
+	}
+
+	if err := s.repo.CreateExportJob(job); err != nil {
+		return "", err
+	}
+
+	// Start background generation
+	go s.GeneratePDFAsync(exportID, ctx, params)
+
+	return exportID, nil
+}
+
+// GetExportStatus retrieves an export job status
+func (s *reportService) GetExportStatus(exportID string) (*dto.ExportJobStatus, error) {
+	job, err := s.repo.GetExportJob(exportID)
+	if err != nil {
+		return nil, err
+	}
+
+	status := &dto.ExportJobStatus{
+		ExportID:    job.ID,
+		Status:      job.Status,
+		ErrorMsg:    job.ErrorMsg,
+		CreatedAt:   job.CreatedAt,
+		CompletedAt: job.CompletedAt,
+	}
+
+	if job.Status == "completed" {
+		status.FileURL = "/api/v1/reports/export/download/" + exportID
+	}
+
+	return status, nil
+}
+
+// GenerateExcelAsync generates Excel export asynchronously
+func (s *reportService) GenerateExcelAsync(exportID string, ctx context.Context, params dto.ReportFilterParams) {
+	// Update job status to in_progress
+	s.repo.UpdateExportJob(exportID, map[string]interface{}{"status": "in_progress"})
+
+	// Generate the Excel file
+	buf, err := s.ExportToExcel(ctx, params)
+	if err != nil {
+		s.repo.UpdateExportJob(exportID, map[string]interface{}{
+			"status": "failed",
+			"error_msg": err.Error(),
+		})
+		return
+	}
+
+	// Save file to local storage
+	filePath := "/tmp/exports/" + exportID + ".xlsx"
+	if err := saveFile(buf.Bytes(), filePath); err != nil {
+		s.repo.UpdateExportJob(exportID, map[string]interface{}{
+			"status": "failed",
+			"error_msg": err.Error(),
+		})
+		return
+	}
+
+	// Update job status to completed
+	s.repo.UpdateExportJob(exportID, map[string]interface{}{
+		"status": "completed",
+		"file_path": filePath,
+		"completed_at": time.Now(),
+	})
+}
+
+// GeneratePDFAsync generates PDF export asynchronously
+func (s *reportService) GeneratePDFAsync(exportID string, ctx context.Context, params dto.ReportFilterParams) {
+	// Update job status to in_progress
+	s.repo.UpdateExportJob(exportID, map[string]interface{}{"status": "in_progress"})
+
+	// Generate the PDF file
+	buf, err := s.ExportToPDF(ctx, params)
+	if err != nil {
+		s.repo.UpdateExportJob(exportID, map[string]interface{}{
+			"status": "failed",
+			"error_msg": err.Error(),
+		})
+		return
+	}
+
+	// Save file to local storage
+	filePath := "/tmp/exports/" + exportID + ".pdf"
+	if err := saveFile(buf.Bytes(), filePath); err != nil {
+		s.repo.UpdateExportJob(exportID, map[string]interface{}{
+			"status": "failed",
+			"error_msg": err.Error(),
+		})
+		return
+	}
+
+	// Update job status to completed
+	s.repo.UpdateExportJob(exportID, map[string]interface{}{
+		"status": "completed",
+		"file_path": filePath,
+		"completed_at": time.Now(),
+	})
+}
+
+// saveFile saves a byte slice to a file
+func saveFile(data []byte, filePath string) error {
+	// Create directory if not exists
+	if err := os.MkdirAll(filepath.Dir(filePath), 0755); err != nil {
+		return err
+	}
+
+	return os.WriteFile(filePath, data, 0644)
 }

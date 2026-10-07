@@ -14,6 +14,7 @@ type MedicineRepository interface {
 	Create(medicine *model.Obat) error
 	FindAll(ctx context.Context, params dto.MedicineFilterParams) ([]model.Obat, error)
 	FindByID(id uint) (*model.Obat, error)
+	FindByIDActive(id uint) (*model.Obat, error)
 	FindByBarcode(barcode string) (*model.Obat, error)
 	Update(medicine *model.Obat) error
 	UpdateStatus(ctx context.Context, id uint, status int) error
@@ -96,9 +97,18 @@ func (r *medicineRepository) FindByID(id uint) (*model.Obat, error) {
 	return &medicine, nil
 }
 
+func (r *medicineRepository) FindByIDActive(id uint) (*model.Obat, error) {
+	var medicine model.Obat
+	err := r.db.Preload("JenisObat").First(&medicine, "id_obat = ? AND status = 1", id).Error
+	if err != nil {
+		return nil, err
+	}
+	return &medicine, nil
+}
+
 func (r *medicineRepository) FindByBarcode(barcode string) (*model.Obat, error) {
 	var medicine model.Obat
-	err := r.db.Preload("JenisObat").First(&medicine, "barcode = ?", barcode).Error
+	err := r.db.Preload("JenisObat").First(&medicine, "barcode = ? AND status = 1", barcode).Error
 	if err != nil {
 		return nil, err
 	}

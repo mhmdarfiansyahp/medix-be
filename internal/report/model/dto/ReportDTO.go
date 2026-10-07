@@ -42,3 +42,12 @@ type DrugSalesStat struct {
 	TotalTerjual int     `json:"total_terjual"`
 	TotalOmset   float64 `json:"total_omset"`
 }
+
+type ExportJobStatus struct {
+	ExportID    string    `json:"export_id"`
+	Status      string    `json:"status"`
+	ErrorMsg    string    `json:"error_msg,omitempty"`
+	CreatedAt   time.Time `json:"created_at"`
+	CompletedAt time.Time `json:"completed_at,omitempty"`
+	FileURL     string    `json:"file_url,omitempty"`
+}

@@ -8,11 +8,27 @@ import (
 	"gorm.io/gorm"
 )
 
+type ExportJob struct {
+	ID            string    `gorm:"primaryKey" json:"export_id"`
+	UserID        uint      `gorm:"index" json:"user_id"`
+	ExportType    string    `json:"export_type"` // excel/pdf
+	Status        string    `json:"status"`     // pending/in_progress/completed/failed
+	FilePath      string    `json:"file_path"`
+	ErrorMsg      string    `json:"error_msg"`
+	CreatedAt     time.Time `json:"created_at"`
+	CompletedAt   time.Time `json:"completed_at"`
+}
+
 type ReportRepository interface {
 	GetSalesChart(ctx context.Context, startDate, endDate time.Time, groupBy string) ([]dto.SalesChartData, error)
 	GetTopDrugs(ctx context.Context, startDate, endDate time.Time, limit int) ([]dto.DrugSalesStat, error)
 	GetBottomDrugs(ctx context.Context, startDate, endDate time.Time, limit int) ([]dto.DrugSalesStat, error)
 	GetExportTransactionData(ctx context.Context, startDate, endDate time.Time) ([]dto.ExportTransactionRow, error)
+
+	// Async export job management
+	CreateExportJob(job *ExportJob) error
+	UpdateExportJob(id string, updates map[string]interface{}) error
+	GetExportJob(id string) (*ExportJob, error)
 }
 
 type reportRepository struct {
@@ -96,4 +112,24 @@ func (r *reportRepository) GetExportTransactionData(ctx context.Context, startDa
 		Scan(&results).Error
 
 	return results, err
+}
+
+// CreateExportJob creates a new export job
+func (r *reportRepository) CreateExportJob(job *ExportJob) error {
+	return r.db.Create(job).Error
+}
+
+// UpdateExportJob updates an existing export job
+func (r *reportRepository) UpdateExportJob(id string, updates map[string]interface{}) error {
+	return r.db.Model(&ExportJob{}).Where("id = ?", id).Updates(updates).Error
+}
+
+// GetExportJob retrieves an export job by ID
+func (r *reportRepository) GetExportJob(id string) (*ExportJob, error) {
+	var job ExportJob
+	err := r.db.First(&job, "id = ?", id).Error
+	if err != nil {
+		return nil, err
+	}
+	return &job, nil
 }

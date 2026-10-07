@@ -84,7 +84,7 @@ func (s *medicineService) GetAllMedicines(ctx context.Context, params dto.Medici
 }
 
 func (s *medicineService) GetMedicineByID(id uint) (*dto.MedicineResponse, error) {
-	medicine, err := s.repo.FindByID(id)
+	medicine, err := s.repo.FindByIDActive(id)
 	if err != nil {
 		return nil, errors.New("medicine not found")
 	}

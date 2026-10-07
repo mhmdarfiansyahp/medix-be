@@ -20,6 +20,7 @@ type UserService interface {
 	Login(req *dto.LoginRequest) (*dto.LoginResponse, error)
 	RefreshToken(req *dto.RefreshRequest) (*dto.RefreshResponse, error)
 	Logout(req *dto.LogoutRequest) error
+	CleanExpiredSessions() error
 
 	GetAllUsers(page int, limit int, search string, role string, status string) (*dto.UserListResponse, error)
 	GetUserByID(id uint) (*dto.UserResponse, error)
@@ -183,11 +184,11 @@ func (s *userService) Login(req *dto.LoginRequest) (*dto.LoginResponse, error) {
 
 	user, err := s.repo.FindByUsername(*req.Username)
 	if err != nil {
-		return nil, errors.New("username or password incorrect")
+		return nil, errors.New("username tidak ditemukan")
 	}
 
 	if user.Status == 0 {
-		return nil, errors.New("user is inactive")
+		return nil, errors.New("akun pengguna tidak aktif")
 	}
 
 	err = bcrypt.CompareHashAndPassword(
@@ -195,7 +196,7 @@ func (s *userService) Login(req *dto.LoginRequest) (*dto.LoginResponse, error) {
 		[]byte(*req.Password),
 	)
 	if err != nil {
-		return nil, errors.New("username or password incorrect")
+		return nil, errors.New("kata sandi salah")
 	}
 
 	tokenString, err := s.generateAccessToken(user)
@@ -278,6 +279,10 @@ func (s *userService) Logout(req *dto.LogoutRequest) error {
 	return s.sessionRepo.RevokeByID(session.IDSession)
 }
 
+func (s *userService) CleanExpiredSessions() error {
+	return s.sessionRepo.DeleteExpired()
+}
+
 func (s *userService) generateAccessToken(user *model.User) (string, error) {
 	token := jwt.NewWithClaims(
 		jwt.SigningMethodHS256,
@@ -285,7 +290,7 @@ func (s *userService) generateAccessToken(user *model.User) (string, error) {
 			"user_id":  user.IDUser,
 			"username": user.Username,
 			"role":     user.Role,
-			"exp":      time.Now().Add(6 * time.Hour).Unix(),
+			"exp":      time.Now().Add(8 * time.Hour).Unix(),
 			"iat":      time.Now().Unix(),
 		},
 	)

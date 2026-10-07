@@ -11,6 +11,7 @@ type SessionRepository interface {
 	FindByRefreshToken(token string) (*model.Session, error)
 	RevokeByID(id string) error
 	RevokeAllByUserID(userID uint) error
+	DeleteExpired() error
 }
 
 type sessionRepository struct {
@@ -40,4 +41,8 @@ func (r *sessionRepository) RevokeByID(id string) error {
 
 func (r *sessionRepository) RevokeAllByUserID(userID uint) error {
 	return r.db.Model(&model.Session{}).Where("id_user = ? AND revoked = false", userID).Update("revoked", true).Error
+}
+
+func (r *sessionRepository) DeleteExpired() error {
+	return r.db.Where("expires_at < NOW() AND revoked = true").Delete(&model.Session{}).Error
 }
