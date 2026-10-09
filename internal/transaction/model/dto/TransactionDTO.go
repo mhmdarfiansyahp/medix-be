@@ -82,6 +82,7 @@ type TransactionResponse struct {
 	Details      []DetailItemResponse `json:"details,omitempty"`
 }
 
+// Receipt response (same structure as TransactionResponse for now)
 type ReceiptResponse struct {
 	IDTransaksi  uint                 `json:"id_transaksi"`
 	TglTransaksi time.Time            `json:"tgl_transaksi"`
@@ -91,4 +92,17 @@ type ReceiptResponse struct {
 	MetodeBayar  string               `json:"metode_bayar"`
 	UangDiterima float64              `json:"uang_diterima"`
 	Kembalian    float64              `json:"kembalian"`
+}
+
+// Receipt generation response
+type GenerateReceiptResponse struct {
+	ReceiptID uint    `json:"receipt_id"`
+	Message  string   `json:"message"`
+}
+
+// User activity response for kasir report
+type TodayKasirReportResponse struct {
+	Transactions []TransactionResponse      `json:"transactions"`
+	Returns      []ReturnSummaryResponse    `json:"returns"`
+	Summary      TransactionSummaryResponse `json:"summary"`
 }

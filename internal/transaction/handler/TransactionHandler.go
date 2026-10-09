@@ -8,6 +8,7 @@ import (
 	"medix-be/internal/common/response"
 	"medix-be/internal/transaction/model/dto"
 	"medix-be/internal/transaction/service"
+	"medix-be/internal/middleware"
 
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
@@ -17,11 +18,11 @@ type TransactionHandler struct {
 	backgroundContext  context.Context
 	logger             *logrus.Logger
 	router             *gin.RouterGroup
-	transactionService service.TransactionService
+	transactionService *service.TransactionService
 }
 
 type TransactionHandlerProps struct {
-	TransactionService service.TransactionService
+	TransactionService *service.TransactionService
 }
 
 type HandlerContract struct {
@@ -52,6 +53,10 @@ func (h *TransactionHandler) RegisterRouter() {
 	h.router.GET("/:id/receipt", h.GetReceipt())
 	h.router.POST("/:id/payment", h.ProcessPayment())
 	h.router.POST("/returns", h.CreateReturn())
+	h.router.POST("/returns/:id/approve", middleware.RequireRoles("admin", "owner"), h.ApproveReturn())
+	h.router.GET("/:id/receipt", h.GetReceipt())
+	h.router.GET("/:id/receipt/generate", h.GenerateReceipt())
+	h.router.GET("/today", h.GetToday())
 }
 
 func (h *TransactionHandler) Create() gin.HandlerFunc {
@@ -321,6 +326,61 @@ func (h *TransactionHandler) CreateReturn() gin.HandlerFunc {
 			return
 		}
 
-		response.Success(c, http.StatusCreated, "Return created successfully", res)
+		response.Success(c, http.StatusOK, "Return created successfully", res)
 	}
 }
+
+func (h *TransactionHandler) ApproveReturn() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		returnID, err := strconv.ParseUint(c.Param("id"), 10, 64)
+		if err != nil {
+			response.Error(c, http.StatusBadRequest, "invalid return ID")
+			return
+		}
+
+		value, exists := c.Get("user_id")
+		if !exists {
+			response.Error(c, http.StatusUnauthorized, "user not authenticated")
+			return
+		}
+
+		adminID, ok := value.(uint)
+		if !ok {
+			response.Error(c, http.StatusUnauthorized, "invalid user ID")
+			return
+		}
+
+		res, err := h.transactionService.ApproveReturn(adminID, uint(returnID))
+		if err != nil {
+			response.Error(c, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		response.Success(c, http.StatusOK, "Return approved successfully", res)
+	}
+}
+
+func (h *TransactionHandler) GenerateReceipt() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		idParam := c.Param("id")
+		id, err := strconv.ParseUint(idParam, 10, 64)
+		if err != nil {
+			response.Error(c, http.StatusBadRequest, "ID transaksi tidak valid")
+			return
+		}
+
+		format := c.Query("format")
+		if format == "" {
+			format = "whatsapp"
+		}
+
+		res, err := h.transactionService.GenerateReceipt(uint(id), format)
+		if err != nil {
+			response.Error(c, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		response.Success(c, http.StatusOK, "Receipt generated successfully", res)
+	}
+}
+

@@ -8,6 +8,10 @@ import (
 	"medix-be/internal/medicine/service"
 	transRepo "medix-be/internal/transaction/repository"
 	transService "medix-be/internal/transaction/service"
+	transCore "medix-be/internal/transaction/service/core"
+	transReturn "medix-be/internal/transaction/service/returns"
+	transReceipt "medix-be/internal/transaction/service/receipt"
+	transReport "medix-be/internal/transaction/service/report"
 
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
@@ -26,9 +30,19 @@ func StartApp(cfg *ModuleConfig) {
 	medicineRepo := repository.NewMedicineRepository(cfg.DB)
 	medicineSvc := service.NewMedicineService(medicineRepo)
 
-	// Create transaction service (for cart operations)
+	// Create transaction services (for cart operations)
 	transactionRepo := transRepo.NewTransactionRepository(cfg.DB)
-	transactionSvc := transService.NewTransactionService(transactionRepo)
+	coreSvc := transCore.NewCoreService(transactionRepo)
+	returnsSvc := transReturn.NewReturnService(transactionRepo)
+	receiptSvc := transReceipt.NewReceiptService(transactionRepo)
+	reportSvc := transReport.NewReportService(transactionRepo)
+	transactionSvc := transService.NewTransactionService(
+		cfg.Logger,
+		coreSvc,
+		returnsSvc,
+		receiptSvc,
+		reportSvc,
+	)
 
 	handlerContract := &handler.HandlerContract{
 		Logger: cfg.Logger,

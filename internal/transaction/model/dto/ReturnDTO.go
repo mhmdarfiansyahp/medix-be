@@ -31,3 +31,10 @@ type CreateReturnResponse struct {
 	Status       string            `json:"status"`
 	Items        []ReturnItemResponse `json:"items"`
 }
+
+// Approve return response
+type ApproveReturnResponse struct {
+	IDReturn uint    `json:"id_return"`
+	Status   string  `json:"status"`
+	Message  string  `json:"message"`
+}

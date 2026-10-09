@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"medix-be/internal/common/response"
+	"medix-be/internal/middleware"
 	"medix-be/internal/user/model/dto"
 	"medix-be/internal/user/service"
 
@@ -64,6 +65,8 @@ func (h *UserHandler) RegisterRouter() {
 	protected.GET("/profile", h.GetProfile())
 	protected.PUT("/profile", h.UpdateProfile())
 	protected.POST("/profile/photo", h.UploadProfilePhoto())
+	protected.POST("/profile/password", h.ChangePassword())
+	protected.POST("/:id/reset-password", middleware.RequireRoles("admin"), h.ResetPassword())
 }
 
 func (h *UserHandler) CreateUser() gin.HandlerFunc {
@@ -354,5 +357,53 @@ func (h *UserHandler) UploadProfilePhoto() gin.HandlerFunc {
 		}
 
 		response.Success(c, http.StatusOK, "Profile photo updated successfully", res)
+	}
+}
+
+func (h *UserHandler) ChangePassword() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		value, exists := c.Get("user_id")
+		if !exists {
+			response.Error(c, http.StatusUnauthorized, "user not authenticated")
+			return
+		}
+
+		userID, ok := value.(uint)
+		if !ok {
+			response.Error(c, http.StatusUnauthorized, "invalid user ID")
+			return
+		}
+
+		var payload dto.ChangePasswordRequest
+		if err := c.ShouldBindJSON(&payload); err != nil {
+			response.Error(c, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		if err := h.userService.ChangePassword(userID, payload); err != nil {
+			response.Error(c, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		response.Success(c, http.StatusOK, "Password berhasil diubah", nil)
+	}
+}
+
+func (h *UserHandler) ResetPassword() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		idParam := c.Param("id")
+		id, err := strconv.ParseUint(idParam, 10, 32)
+		if err != nil {
+			response.Error(c, http.StatusBadRequest, "ID user tidak valid")
+			return
+		}
+
+		res, err := h.userService.ResetPassword(uint(id))
+		if err != nil {
+			response.Error(c, http.StatusNotFound, err.Error())
+			return
+		}
+
+		response.Success(c, http.StatusOK, "Password berhasil direset", res)
 	}
 }

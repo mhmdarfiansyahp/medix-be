@@ -30,6 +30,8 @@ type UserService interface {
 	UpdateProfile(id uint, req *dto.UpdateProfileRequest) (*dto.UserResponse, error)
 	UpdateProfilePhoto(id uint, fotoPath string) (*dto.UserResponse, error)
 	GetProfileByUsername(username string) (*dto.UserResponse, error)
+	ResetPassword(id uint) (*dto.ResetPasswordResponse, error)
+	ChangePassword(id uint, req dto.ChangePasswordRequest) error
 }
 
 type userService struct {
@@ -310,6 +312,68 @@ func generateRefreshToken() (string, error) {
 	return hex.EncodeToString(bytes), nil
 }
 
+func generateTempPassword() (string, error) {
+	bytes := make([]byte, 4)
+	if _, err := rand.Read(bytes); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(bytes), nil
+}
+
+func (s *userService) ResetPassword(id uint) (*dto.ResetPasswordResponse, error) {
+	user, err := s.repo.FindByID(id)
+	if err != nil {
+		return nil, errors.New("user tidak ditemukan")
+	}
+
+	tempPassword, err := generateTempPassword()
+	if err != nil {
+		return nil, errors.New("failed to generate temporary password")
+	}
+
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(tempPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return nil, errors.New("failed to process password")
+	}
+
+	user.Password = string(hashedPassword)
+	user.MustChangePassword = true
+
+	if err := s.repo.Update(user); err != nil {
+		return nil, err
+	}
+
+	return &dto.ResetPasswordResponse{
+		Password: tempPassword,
+		Message:  "Password sementara dibuat. User wajib ganti password saat login pertama.",
+	}, nil
+}
+
+func (s *userService) ChangePassword(id uint, req dto.ChangePasswordRequest) error {
+	user, err := s.repo.FindByID(id)
+	if err != nil {
+		return errors.New("user tidak ditemukan")
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.OldPassword)); err != nil {
+		return errors.New("kata sandi lama salah")
+	}
+
+	newHashed, err := bcrypt.GenerateFromPassword([]byte(req.NewPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return errors.New("failed to process new password")
+	}
+
+	user.Password = string(newHashed)
+	user.MustChangePassword = false
+
+	if err := s.repo.Update(user); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (s *userService) UpdateProfile(id uint, req *dto.UpdateProfileRequest) (*dto.UserResponse, error) {
 
 	user, err := s.repo.FindByID(id)
@@ -376,13 +440,14 @@ func (s *userService) GetProfileByUsername(username string) (*dto.UserResponse, 
 
 func toUserResponse(user model.User) dto.UserResponse {
 	return dto.UserResponse{
-		IDUser:   user.IDUser,
-		NamaUser: user.NamaUser,
-		NoTelp:   user.NoTelp,
-		Role:     user.Role,
-		Username: user.Username,
-		Status:   intToStatus(user.Status),
-		Foto:     user.Foto,
+		IDUser:             user.IDUser,
+		NamaUser:           user.NamaUser,
+		NoTelp:             user.NoTelp,
+		Role:               user.Role,
+		Username:           user.Username,
+		Status:             intToStatus(user.Status),
+		Foto:               user.Foto,
+		MustChangePassword: user.MustChangePassword,
 	}
 }
 

@@ -122,11 +122,6 @@ type LogoutRequest struct {
 	RefreshToken string `json:"refresh_token" binding:"required"`
 }
 
-type ResetPasswordRequest struct {
-	AdminID uint `json:"admin_id" binding:"required"`
-	UserID  uint `json:"user_id" binding:"required"`
-}
-
 type ResetPasswordResponse struct {
 	Password string `json:"password"`
 	Message  string `json:"message"`
