@@ -32,18 +32,19 @@ func (s *UserStatus) UnmarshalJSON(data []byte) error {
 }
 
 type UserResponse struct {
-	IDUser   uint   `json:"id_user"`
-	NamaUser string `json:"nama_user"`
-	NoTelp   string `json:"no_telp"`
-	Role     string `json:"role"`
-	Username string `json:"username"`
-	Status   string `json:"status"`
-	Foto     string `json:"foto"`
+	IDUser             uint   `json:"id_user"`
+	NamaUser           string `json:"nama_user"`
+	NoTelp             string `json:"no_telp"`
+	Role               string `json:"role"`
+	Username           string `json:"username"`
+	Status             string `json:"status"`
+	Foto               string `json:"foto"`
+	MustChangePassword bool   `json:"must_change_password"`
 }
 
 type CreateUserRequest struct {
 	NamaUser string     `json:"nama_user" binding:"required,max=100"`
-	NoTelp   string     `json:"no_telp" binding:"max=13"`
+	NoTelp   string     `json:"no_telp" binding:"max=15"`
 	Role     string     `json:"role" binding:"required,oneof=admin kasir owner"`
 	Username string     `json:"username" binding:"required,max=50"`
 	Password string     `json:"password" binding:"required,min=6"`
@@ -53,7 +54,7 @@ type CreateUserRequest struct {
 
 type UpdateUserRequest struct {
 	NamaUser string     `json:"nama_user" binding:"omitempty,max=100"`
-	NoTelp   string     `json:"no_telp" binding:"omitempty,max=13"`
+	NoTelp   string     `json:"no_telp" binding:"omitempty,max=15"`
 	Role     string     `json:"role" binding:"omitempty,oneof=admin kasir owner"`
 	Username string     `json:"username" binding:"omitempty,max=50"`
 	Password string     `json:"password" binding:"omitempty,min=6"`
@@ -62,10 +63,10 @@ type UpdateUserRequest struct {
 }
 
 type UpdateProfileRequest struct {
-    NamaUser string `json:"nama_user" form:"nama_user" binding:"omitempty,max=100"`
-    NoTelp   string `json:"no_telp" form:"no_telp" binding:"omitempty,max=13"`
-    Username string `json:"username" form:"username" binding:"omitempty,max=50"`
-    Foto     string `json:"foto" form:"foto"`
+	NamaUser string `json:"nama_user" form:"nama_user" binding:"omitempty,max=100"`
+	NoTelp   string `json:"no_telp" form:"no_telp" binding:"omitempty,max=15"`
+	Username string `json:"username" form:"username" binding:"omitempty,max=50"`
+	Foto     string `json:"foto" form:"foto"`
 }
 
 func (r *UpdateProfileRequest) ValidateNoTelp() bool {
@@ -119,4 +120,19 @@ type RefreshResponse struct {
 
 type LogoutRequest struct {
 	RefreshToken string `json:"refresh_token" binding:"required"`
+}
+
+type ResetPasswordRequest struct {
+	AdminID uint `json:"admin_id" binding:"required"`
+	UserID  uint `json:"user_id" binding:"required"`
+}
+
+type ResetPasswordResponse struct {
+	Password string `json:"password"`
+	Message  string `json:"message"`
+}
+
+type ChangePasswordRequest struct {
+	OldPassword string `json:"old_password" binding:"required"`
+	NewPassword string `json:"new_password" binding:"required,min=6"`
 }

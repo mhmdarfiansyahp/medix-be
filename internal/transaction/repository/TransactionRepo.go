@@ -23,7 +23,16 @@ type TransactionRepository interface {
 	FindByID(id uint) (*model.Transaksi, error)
 	FindTodayByUser(idUser uint) ([]*model.Transaksi, error)
 	GetTodaySummary(idUser uint) (float64, int, error)
+	GetTodayPaymentBreakdown(idUser uint) (float64, float64, error)
 	UpdateStatus(tx *gorm.DB, id uint, status int) error
+	GetUser(tx *gorm.DB, id uint) (*model.User, error)
+
+	// Retur
+	CreateReturn(tx *gorm.DB, ret *model.Return) error
+	CreateReturnItem(tx *gorm.DB, item *model.ReturnItem) error
+	GetReturnByID(id uint) (*model.Return, error)
+	FindTodayReturnsByUser(idUser uint) ([]model.Return, error)
+	UpdateReturnStatus(tx *gorm.DB, id uint, status string) error
 
 	GetDB() *gorm.DB
 }
@@ -186,6 +195,94 @@ func (r *transactionRepository) UpdateStatus(tx *gorm.DB, id uint, status int) e
 	return tx.
 		Model(&model.Transaksi{}).
 		Where("id_transaksi = ?", id).
+		Update("status", status).
+		Error
+}
+
+func (r *transactionRepository) GetTodayPaymentBreakdown(idUser uint) (float64, float64, error) {
+	var tunai, nonTunai float64
+	err := r.db.
+		Model(&model.Transaksi{}).
+		Where("id_user = ?", idUser).
+		Where("DATE(tgl_transaksi) = CURRENT_DATE").
+		Where("status = ?", model.StatusTransaksiSelesai).
+		Where("metode_bayar = ?", "tunai").
+		Select("COALESCE(SUM(total_harga), 0)").
+		Scan(&tunai).
+		Error
+	if err != nil {
+		return 0, 0, err
+	}
+
+	err = r.db.
+		Model(&model.Transaksi{}).
+		Where("id_user = ?", idUser).
+		Where("DATE(tgl_transaksi) = CURRENT_DATE").
+		Where("status = ?", model.StatusTransaksiSelesai).
+		Where("metode_bayar != ?", "tunai").
+		Where("metode_bayar IS NOT NULL").
+		Select("COALESCE(SUM(total_harga), 0)").
+		Scan(&nonTunai).
+		Error
+	if err != nil {
+		return 0, 0, err
+	}
+
+	return tunai, nonTunai, nil
+}
+
+func (r *transactionRepository) GetUser(tx *gorm.DB, id uint) (*model.User, error) {
+	var user model.User
+	err := tx.
+		Where("id_user = ?", id).
+		First(&user).
+		Error
+	if err != nil {
+		return nil, err
+	}
+	return &user, nil
+}
+
+func (r *transactionRepository) FindTodayReturnsByUser(idUser uint) ([]model.Return, error) {
+	var returns []model.Return
+	err := r.db.
+		Where("diajukan_oleh = ?", idUser).
+		Where("DATE(tanggal_retur) = CURRENT_DATE").
+		Preload("Items").
+		Order("tanggal_retur DESC").
+		Find(&returns).
+		Error
+	if err != nil {
+		return nil, err
+	}
+	return returns, nil
+}
+
+func (r *transactionRepository) CreateReturn(tx *gorm.DB, ret *model.Return) error {
+	return tx.Create(ret).Error
+}
+
+func (r *transactionRepository) CreateReturnItem(tx *gorm.DB, item *model.ReturnItem) error {
+	return tx.Create(item).Error
+}
+
+func (r *transactionRepository) GetReturnByID(id uint) (*model.Return, error) {
+	var ret model.Return
+	err := r.db.
+		Preload("Items").
+		Where("id_return = ?", id).
+		First(&ret).
+		Error
+	if err != nil {
+		return nil, err
+	}
+	return &ret, nil
+}
+
+func (r *transactionRepository) UpdateReturnStatus(tx *gorm.DB, id uint, status string) error {
+	return tx.
+		Model(&model.Return{}).
+		Where("id_return = ?", id).
 		Update("status", status).
 		Error
 }

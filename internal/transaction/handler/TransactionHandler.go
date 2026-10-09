@@ -50,6 +50,8 @@ func (h *TransactionHandler) RegisterRouter() {
 	h.router.GET("/:id", h.GetByID())
 	h.router.PATCH("/:id/cancel", h.Cancel())
 	h.router.GET("/:id/receipt", h.GetReceipt())
+	h.router.POST("/:id/payment", h.ProcessPayment())
+	h.router.POST("/returns", h.CreateReturn())
 }
 
 func (h *TransactionHandler) Create() gin.HandlerFunc {
@@ -247,5 +249,78 @@ func (h *TransactionHandler) GetReceipt() gin.HandlerFunc {
 		}
 
 		response.Success(c, http.StatusOK, "Transaction receipt retrieved successfully", res)
+	}
+}
+
+func (h *TransactionHandler) ProcessPayment() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		idParam := c.Param("id")
+
+		id, err := strconv.ParseUint(idParam, 10, 64)
+		if err != nil {
+			response.Error(c, http.StatusBadRequest, "ID transaksi tidak valid")
+			return
+		}
+
+		var req dto.PaymentRequest
+		if err := c.ShouldBindJSON(&req); err != nil {
+			response.Error(c, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		userIDValue, exists := c.Get("user_id")
+		if !exists {
+			response.Error(c, http.StatusUnauthorized, "user not authenticated")
+			return
+		}
+
+		userID, ok := userIDValue.(uint)
+		if !ok {
+			response.Error(c, http.StatusUnauthorized, "invalid user ID")
+			return
+		}
+
+		res, err := h.transactionService.ProcessPayment(
+			uint(id),
+			userID,
+			req,
+		)
+
+		if err != nil {
+			response.Error(c, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		response.Success(c, http.StatusOK, "Payment processed successfully", res)
+	}
+}
+
+func (h *TransactionHandler) CreateReturn() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var req dto.CreateReturnRequest
+		if err := c.ShouldBindJSON(&req); err != nil {
+			response.Error(c, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		userIDValue, exists := c.Get("user_id")
+		if !exists {
+			response.Error(c, http.StatusUnauthorized, "user not authenticated")
+			return
+		}
+
+		userID, ok := userIDValue.(uint)
+		if !ok {
+			response.Error(c, http.StatusUnauthorized, "invalid user ID")
+			return
+		}
+
+		res, err := h.transactionService.CreateReturn(userID, req)
+		if err != nil {
+			response.Error(c, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		response.Success(c, http.StatusCreated, "Return created successfully", res)
 	}
 }

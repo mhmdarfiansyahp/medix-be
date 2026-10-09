@@ -36,6 +36,8 @@ func main() {
 		MaxAge:           12 * time.Hour,
 	}))
 
+	r.Static("/uploads", "./uploads")
+
 	apiV1 := r.Group("/api/v1")
 
 	authAPI := apiV1.Group("")

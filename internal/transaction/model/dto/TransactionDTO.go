@@ -23,6 +23,20 @@ type AddToCartResponse struct {
 	Message      string              `json:"message,omitempty"`
 }
 
+type PaymentRequest struct {
+	MetodeBayar    string  `json:"metode_bayar" binding:"required,oneof=tunai QRIS debit kredit transfer"`
+	UangDiterima   float64 `json:"uang_diterima" binding:"omitempty,gte=0"`
+}
+
+type PaymentResponse struct {
+	IDTransaksi  uint      `json:"id_transaksi"`
+	MetodeBayar    string  `json:"metode_bayar"`
+	UangDiterima   float64 `json:"uang_diterima"`
+	Kembalian      float64 `json:"kembalian"`
+	Status       int      `json:"status"`
+	TotalHarga   float64  `json:"total_harga"`
+}
+
 type DetailItemResponse struct {
 	IDDetail    uint    `json:"id_detail"`
 	IDObat      uint    `json:"id_obat"`
@@ -41,11 +55,22 @@ type CancelTransactionResponse struct {
 type TransactionSummaryResponse struct {
 	TotalTransaksi int     `json:"total_transaksi"`
 	TotalPenjualan float64 `json:"total_penjualan"`
+	TotalTunai     float64 `json:"total_tunai"`
+	TotalNonTunai  float64 `json:"total_non_tunai"`
 }
 
 type TodayTransactionResponse struct {
 	Transactions []TransactionResponse      `json:"transactions"`
 	Summary      TransactionSummaryResponse `json:"summary"`
+	Returns      []ReturnSummaryResponse    `json:"returns"`
+}
+
+type ReturnSummaryResponse struct {
+	IDReturn     uint      `json:"id_return"`
+	IDTransaksi  uint      `json:"id_transaksi"`
+	Alasan       string    `json:"alasan"`
+	TanggalRetur time.Time `json:"tanggal_retur"`
+	Status       string    `json:"status"`
 }
 
 type TransactionResponse struct {
@@ -63,4 +88,7 @@ type ReceiptResponse struct {
 	IDUser       uint                 `json:"id_user"`
 	Details      []DetailItemResponse `json:"details"`
 	TotalHarga   float64              `json:"total_harga"`
+	MetodeBayar  string               `json:"metode_bayar"`
+	UangDiterima float64              `json:"uang_diterima"`
+	Kembalian    float64              `json:"kembalian"`
 }

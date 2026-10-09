@@ -7,6 +7,7 @@ import (
 	"medix-be/internal/transaction/model"
 	"medix-be/internal/transaction/model/dto"
 	"medix-be/internal/transaction/repository"
+	"strconv"
 	"time"
 )
 
@@ -15,9 +16,11 @@ type TransactionService interface {
 	AddToCart(userID uint, req dto.AddToCartRequest) (*dto.TransactionResponse, error)
 	GetAllTransactions() ([]dto.TransactionResponse, error)
 	GetTransactionByID(id uint) (*dto.TransactionResponse, error)
-CancelTransaction(id uint, userID uint, userRole string) error
+	CancelTransaction(id uint, userID uint, userRole string) error
 	GetTodayTransactions(userID uint) (*dto.TodayTransactionResponse, error)
 	GetReceipt(id uint) (*dto.ReceiptResponse, error)
+	ProcessPayment(id uint, userID uint, req dto.PaymentRequest) (*dto.PaymentResponse, error)
+	CreateReturn(userID uint, req dto.CreateReturnRequest) (*dto.CreateReturnResponse, error)
 }
 
 type transactionService struct {
@@ -395,5 +398,224 @@ func (s *transactionService) GetReceipt(id uint) (*dto.ReceiptResponse, error) {
 		IDUser:       transaction.IDUser,
 		Details:      details,
 		TotalHarga:   transaction.TotalHarga,
+		MetodeBayar:  transaction.MetodeBayar,
+		UangDiterima: transaction.UangDiterima,
+		Kembalian:    transaction.Kembalian,
+	}, nil
+}
+
+func (s *transactionService) ProcessPayment(id uint, userID uint, req dto.PaymentRequest) (*dto.PaymentResponse, error) {
+	tx := s.repo.GetDB().Begin()
+	if tx.Error != nil {
+		return nil, tx.Error
+	}
+
+	// Cari transaksi
+	var transaksi model.Transaksi
+	err := tx.
+		Preload("Details").
+		Where("id_transaksi = ?", id).
+		First(&transaksi).
+		Error
+
+	if err != nil {
+		tx.Rollback()
+		return nil, errors.New("transaksi tidak ditemukan")
+	}
+
+	// Validasi status transaksi (harus belum dibayar/final)
+	if transaksi.Status != model.StatusTransaksiSelesai && transaksi.Status != model.StatusTransaksiProsesBayar {
+		tx.Rollback()
+		return nil, errors.New("transaksi tidak dapat dibayar, status saat ini: " + strconv.Itoa(transaksi.Status))
+	}
+
+	// Validasi metode pembayaran
+	if req.MetodeBayar == "tunai" {
+		if req.UangDiterima <= 0 {
+			tx.Rollback()
+			return nil, errors.New("uang diterima harus lebih besar dari 0 untuk pembayaran tunai")
+		}
+		if req.UangDiterima < transaksi.TotalHarga {
+			tx.Rollback()
+			return nil, errors.New("uang diterima tidak mencukupi untuk total transaksi")
+		}
+		transaksi.UangDiterima = req.UangDiterima
+		transaksi.Kembalian = req.UangDiterima - transaksi.TotalHarga
+	} else {
+		// Pembayaran non-tunai tidak memerlukan input uang diterima
+		transaksi.UangDiterima = 0
+		transaksi.Kembalian = 0
+	}
+	transaksi.MetodeBayar = req.MetodeBayar
+	
+	// Update status transaksi menjadi final (status 2)
+	if err := s.repo.UpdateStatus(tx, id, model.StatusTransaksiProsesBayar); err != nil {
+		tx.Rollback()
+		return nil, err
+	}
+	
+	// Commit transaksi
+	if err := tx.Commit().Error; err != nil {
+		return nil, err
+	}
+
+	// Reload transaksi untuk mendapatkan data terbaru
+	if err := tx.Preload("Details").First(&transaksi, id).Error; err != nil {
+		return nil, err
+	}
+
+	return &dto.PaymentResponse{
+		IDTransaksi:  transaksi.IDTransaksi,
+		MetodeBayar:    transaksi.MetodeBayar,
+		UangDiterima:   transaksi.UangDiterima,
+		Kembalian:      transaksi.Kembalian,
+		Status:       transaksi.Status,
+		TotalHarga:   transaksi.TotalHarga,
+	}, nil
+}
+
+func (s *transactionService) CreateReturn(userID uint, req dto.CreateReturnRequest) (*dto.CreateReturnResponse, error) {
+	tx := s.repo.GetDB().Begin()
+	if tx.Error != nil {
+		return nil, tx.Error
+	}
+
+	// Cari transaksi asli
+	var transaksi model.Transaksi
+	err := tx.
+		Preload("Details").
+		Where("id_transaksi = ?", req.IDTransaksi).
+		First(&transaksi).
+		Error
+
+	if err != nil {
+		tx.Rollback()
+		return nil, errors.New("transaksi tidak ditemukan")
+	}
+
+	// Transaksi harus sudah selesai/final
+	if transaksi.Status != model.StatusTransaksiSelesai && transaksi.Status != model.StatusTransaksiProsesBayar {
+		tx.Rollback()
+		return nil, errors.New("hanya transaksi yang sudah selesai yang dapat diretur")
+	}
+
+	// Validasi user: kasir hanya boleh retur transaksi miliknya sendiri, admin/owner boleh semua
+	user, err := s.repo.GetUser(tx, userID)
+	if err != nil {
+		tx.Rollback()
+		return nil, errors.New("user tidak ditemukan")
+	}
+	isAdmin := user.Role == "admin" || user.Role == "owner"
+	if !isAdmin && transaksi.IDUser != userID {
+		tx.Rollback()
+		return nil, errors.New("anda hanya dapat meretur transaksi milik sendiri")
+	}
+
+	// Siapkan data retur dan validasi item
+	ret := model.Return{
+		IDTransaksi:  req.IDTransaksi,
+		Alasan:       req.Alasan,
+		DiajukanOleh: userID,
+		Status:       "pending",
+	}
+
+	var totalNilaiRetur float64
+	items := make([]model.ReturnItem, 0, len(req.Items))
+
+	for _, itemReq := range req.Items {
+		// Cari detail pembelian asli untuk validasi harga snapshot
+		var detailAsli model.DetailPembelian
+		err := tx.
+			Where("id_transaksi = ? AND id_obat = ?", req.IDTransaksi, itemReq.IDObat).
+			First(&detailAsli).
+			Error
+		if err != nil {
+			tx.Rollback()
+			return nil, fmt.Errorf("obat dengan id %d tidak ditemukan dalam transaksi", itemReq.IDObat)
+		}
+
+		if itemReq.Jumlah > detailAsli.Jumlah {
+			tx.Rollback()
+			return nil, fmt.Errorf("jumlah retur untuk obat %d melebihi jumlah pembelian", itemReq.IDObat)
+		}
+
+		nilaiRetur := float64(itemReq.Jumlah) * detailAsli.HargaSatuan
+		totalNilaiRetur += nilaiRetur
+
+		stokKembali := 0
+		if itemReq.KondisiLayak {
+			stokKembali = itemReq.Jumlah
+		}
+
+		item := model.ReturnItem{
+			IDObat:       itemReq.IDObat,
+			Jumlah:       itemReq.Jumlah,
+			AlasanItem:   itemReq.AlasanItem,
+			KondisiLayak: itemReq.KondisiLayak,
+			StokKembali:  stokKembali,
+		}
+		items = append(items, item)
+	}
+
+	// Tentukan status otomatis: jika di bawah threshold dan semua item layak, langsung approved
+	semuaLayak := true
+	for _, it := range items {
+		if !it.KondisiLayak {
+			semuaLayak = false
+			break
+		}
+	}
+
+	if totalNilaiRetur <= 100000.0 && semuaLayak {
+		ret.Status = "approved"
+	}
+
+	// Simpan header retur
+	if err := s.repo.CreateReturn(tx, &ret); err != nil {
+		tx.Rollback()
+		return nil, fmt.Errorf("failed to create return: %w", err)
+	}
+
+	// Simpan item retur dan kembalikan stok jika layak
+	for i := range items {
+		items[i].IDReturn = ret.IDReturn
+		if err := s.repo.CreateReturnItem(tx, &items[i]); err != nil {
+			tx.Rollback()
+			return nil, fmt.Errorf("failed to create return item: %w", err)
+		}
+
+		if items[i].KondisiLayak {
+			if err := s.repo.RestoreStokObat(tx, items[i].IDObat, items[i].Jumlah); err != nil {
+				tx.Rollback()
+				return nil, fmt.Errorf("failed to restore stock for medicine %d: %w", items[i].IDObat, err)
+			}
+		}
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		return nil, err
+	}
+
+	// Siapkan response
+	respItems := make([]dto.ReturnItemResponse, 0, len(items))
+	for _, it := range items {
+		respItems = append(respItems, dto.ReturnItemResponse{
+			IDItem:       it.IDItem,
+			IDObat:       it.IDObat,
+			Jumlah:       it.Jumlah,
+			AlasanItem:   it.AlasanItem,
+			KondisiLayak: it.KondisiLayak,
+			StokKembali:  it.StokKembali,
+		})
+	}
+
+	return &dto.CreateReturnResponse{
+		IDReturn:     ret.IDReturn,
+		IDTransaksi:  ret.IDTransaksi,
+		Alasan:       ret.Alasan,
+		TanggalRetur: ret.TanggalRetur.Format(time.RFC3339),
+		DiajukanOleh: ret.DiajukanOleh,
+		Status:       ret.Status,
+		Items:        respItems,
 	}, nil
 }
