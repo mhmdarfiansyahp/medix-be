@@ -7,7 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"medix-be/internal/transaction/model"
+	"medix-be/internal/transaction/model/entities"
 	"medix-be/internal/transaction/model/dto"
 	"medix-be/internal/transaction/repository"
 
@@ -33,7 +33,7 @@ func (s *receiptService) GetReceipt(id uint) (*dto.ReceiptResponse, error) {
 		return nil, errors.New("transaction not found")
 	}
 
-	if transaction.Status == model.StatusTransaksiDibatalkan {
+	if transaction.Status == entities.StatusTransaksiDibatalkan {
 		return nil, errors.New("transaksi sudah dibatalkan")
 	}
 
@@ -66,7 +66,7 @@ func (s *receiptService) GenerateReceipt(id uint, format string) (*dto.GenerateR
 		return nil, errors.New("transaksi tidak ditemukan")
 	}
 
-	if transaction.Status == model.StatusTransaksiDibatalkan {
+	if transaction.Status == entities.StatusTransaksiDibatalkan {
 		return nil, errors.New("transaksi sudah dibatalkan")
 	}
 
@@ -77,7 +77,7 @@ func (s *receiptService) GenerateReceipt(id uint, format string) (*dto.GenerateR
 	return s.generateWhatsAppText(transaction)
 }
 
-func (s *receiptService) generatePDFReceipt(transaction *model.Transaksi) (*dto.GenerateReceiptResponse, error) {
+func (s *receiptService) generatePDFReceipt(transaction *entities.Transaksi) (*dto.GenerateReceiptResponse, error) {
 	names, err := s.obatNames(transaction)
 	if err != nil {
 		return nil, err
@@ -158,7 +158,7 @@ func (s *receiptService) generatePDFReceipt(transaction *model.Transaksi) (*dto.
 	}, nil
 }
 
-func (s *receiptService) generateWhatsAppText(transaction *model.Transaksi) (*dto.GenerateReceiptResponse, error) {
+func (s *receiptService) generateWhatsAppText(transaction *entities.Transaksi) (*dto.GenerateReceiptResponse, error) {
 	names, err := s.obatNames(transaction)
 	if err != nil {
 		return nil, err
@@ -187,7 +187,7 @@ func (s *receiptService) generateWhatsAppText(transaction *model.Transaksi) (*dt
 	}, nil
 }
 
-func (s *receiptService) obatNames(transaction *model.Transaksi) (map[uint]string, error) {
+func (s *receiptService) obatNames(transaction *entities.Transaksi) (map[uint]string, error) {
 	names := make(map[uint]string, len(transaction.Details))
 	for _, detail := range transaction.Details {
 		if _, ok := names[detail.IDObat]; ok {

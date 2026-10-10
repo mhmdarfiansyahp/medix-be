@@ -3,9 +3,10 @@ package returns
 import (
 	"errors"
 	"fmt"
+	"strconv"
 	"time"
 
-	"medix-be/internal/transaction/model"
+	"medix-be/internal/transaction/model/entities"
 	"medix-be/internal/transaction/model/dto"
 	"medix-be/internal/transaction/repository"
 )
@@ -13,6 +14,10 @@ import (
 type ReturnService interface {
 	CreateReturn(userID uint, req dto.CreateReturnRequest) (*dto.CreateReturnResponse, error)
 	ApproveReturn(adminID uint, returnID uint) (*dto.ApproveReturnResponse, error)
+	GetReturnByID(returnID uint) (*dto.CreateReturnResponse, error)
+	RejectReturn(adminID uint, returnID uint, alasan string) (*dto.RejectReturnResponse, error)
+	SetApprovalThreshold(threshold float64) (*dto.ApprovalThresholdResponse, error)
+	GetApprovalThreshold() (*dto.ApprovalThresholdResponse, error)
 }
 
 type returnService struct {
@@ -30,7 +35,7 @@ func (s *returnService) CreateReturn(userID uint, req dto.CreateReturnRequest) (
 	}
 
 	// Cari transaksi asli
-	var transaksi model.Transaksi
+	var transaksi entities.Transaksi
 	err := tx.
 		Preload("Details").
 		Where("id_transaksi = ?", req.IDTransaksi).
@@ -43,7 +48,7 @@ func (s *returnService) CreateReturn(userID uint, req dto.CreateReturnRequest) (
 	}
 
 	// Transaksi harus sudah selesai/final
-	if transaksi.Status != model.StatusTransaksiSelesai && transaksi.Status != model.StatusTransaksiProsesBayar {
+	if transaksi.Status != entities.StatusTransaksiSelesai && transaksi.Status != entities.StatusTransaksiProsesBayar {
 		tx.Rollback()
 		return nil, errors.New("hanya transaksi yang sudah selesai yang dapat diretur")
 	}
@@ -61,7 +66,7 @@ func (s *returnService) CreateReturn(userID uint, req dto.CreateReturnRequest) (
 	}
 
 	// Siapkan data retur dan validasi item
-	ret := model.Return{
+	ret := entities.Return{
 		IDTransaksi:  req.IDTransaksi,
 		Alasan:       req.Alasan,
 		DiajukanOleh: userID,
@@ -69,11 +74,11 @@ func (s *returnService) CreateReturn(userID uint, req dto.CreateReturnRequest) (
 	}
 
 	var totalNilaiRetur float64
-	items := make([]model.ReturnItem, 0, len(req.Items))
+	items := make([]entities.ReturnItem, 0, len(req.Items))
 
 	for _, itemReq := range req.Items {
 		// Cari detail pembelian asli untuk validasi harga snapshot
-		var detailAsli model.DetailPembelian
+		var detailAsli entities.DetailPembelian
 		err := tx.
 			Where("id_transaksi = ? AND id_obat = ?", req.IDTransaksi, itemReq.IDObat).
 			First(&detailAsli).
@@ -96,7 +101,7 @@ func (s *returnService) CreateReturn(userID uint, req dto.CreateReturnRequest) (
 				stokKembali = itemReq.Jumlah
 			}
 
-			item := model.ReturnItem{
+			item := entities.ReturnItem{
 				IDObat:       itemReq.IDObat,
 				Jumlah:       itemReq.Jumlah,
 				AlasanItem:   itemReq.AlasanItem,
@@ -115,7 +120,7 @@ func (s *returnService) CreateReturn(userID uint, req dto.CreateReturnRequest) (
 		}
 	}
 
-	if totalNilaiRetur <= 100000.0 && semuaLayak {
+	if totalNilaiRetur <= getThreshold(s.repo) && semuaLayak {
 		ret.Status = "approved"
 	}
 
@@ -175,7 +180,7 @@ func (s *returnService) ApproveReturn(adminID uint, returnID uint) (*dto.Approve
 		return nil, tx.Error
 	}
 
-	var ret model.Return
+	var ret entities.Return
 	err := tx.Preload("Items").First(&ret, returnID).Error
 	if err != nil {
 		tx.Rollback()
@@ -187,33 +192,18 @@ func (s *returnService) ApproveReturn(adminID uint, returnID uint) (*dto.Approve
 		return nil, errors.New("retur tidak dalam status pending")
 	}
 
-	user, err := s.repo.GetUser(tx, ret.DiajukanOleh)
-	if err != nil {
-		tx.Rollback()
-		return nil, errors.New("user tidak ditemukan")
-	}
-
-	isAdmin := user.Role == "admin" || user.Role == "owner"
-	if !isAdmin {
-		tx.Rollback()
-		return nil, errors.New("hanya admin yang dapat menyetujui retur")
-	}
-
 	if err := s.repo.UpdateReturnStatus(tx, returnID, "approved"); err != nil {
 		tx.Rollback()
 		return nil, err
 	}
 
 	// Kembalikan stok untuk item yang layak
-	var items []model.ReturnItem
 	for _, item := range ret.Items {
-		if item.KondisiLayak && item.StokKembali > 0 {
+		if item.KondisiLayak && item.Jumlah > 0 {
 			if err := s.repo.RestoreStokObat(tx, item.IDObat, item.Jumlah); err != nil {
 				tx.Rollback()
 				return nil, err
 			}
-			item.StokKembali = item.Jumlah
-			items = append(items, item)
 		}
 	}
 
@@ -226,4 +216,103 @@ func (s *returnService) ApproveReturn(adminID uint, returnID uint) (*dto.Approve
 		Status:   "approved",
 		Message:  "retur berhasil disetujui dan stok dikembalikan",
 	}, nil
+}
+
+func (s *returnService) GetReturnByID(returnID uint) (*dto.CreateReturnResponse, error) {
+	ret, err := s.repo.GetReturnByID(returnID)
+	if err != nil {
+		return nil, errors.New("retur tidak ditemukan")
+	}
+
+	respItems := make([]dto.ReturnItemResponse, 0, len(ret.Items))
+	for _, it := range ret.Items {
+		respItems = append(respItems, dto.ReturnItemResponse{
+			IDItem:       it.IDItem,
+			IDObat:       it.IDObat,
+			Jumlah:       it.Jumlah,
+			AlasanItem:   it.AlasanItem,
+			KondisiLayak: it.KondisiLayak,
+			StokKembali:  it.StokKembali,
+		})
+	}
+
+	return &dto.CreateReturnResponse{
+		IDReturn:     ret.IDReturn,
+		IDTransaksi:  ret.IDTransaksi,
+		Alasan:       ret.Alasan,
+		TanggalRetur: ret.TanggalRetur.Format(time.RFC3339),
+		DiajukanOleh: ret.DiajukanOleh,
+		Status:       ret.Status,
+		Items:        respItems,
+	}, nil
+}
+
+func (s *returnService) RejectReturn(adminID uint, returnID uint, alasan string) (*dto.RejectReturnResponse, error) {
+	tx := s.repo.GetDB().Begin()
+	if tx.Error != nil {
+		return nil, tx.Error
+	}
+
+	var ret entities.Return
+	err := tx.First(&ret, returnID).Error
+	if err != nil {
+		tx.Rollback()
+		return nil, errors.New("retur tidak ditemukan")
+	}
+
+	if ret.Status != "pending" {
+		tx.Rollback()
+		return nil, errors.New("retur tidak dalam status pending")
+	}
+
+	if err := s.repo.UpdateReturnStatusWithReason(tx, returnID, "rejected", alasan); err != nil {
+		tx.Rollback()
+		return nil, err
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		return nil, err
+	}
+
+	return &dto.RejectReturnResponse{
+		IDReturn: returnID,
+		Status:   "rejected",
+		Alasan:   alasan,
+		Message:  "retur berhasil ditolak",
+	}, nil
+}
+
+func (s *returnService) SetApprovalThreshold(threshold float64) (*dto.ApprovalThresholdResponse, error) {
+	if threshold < 0 {
+		return nil, errors.New("batas approval tidak boleh negatif")
+	}
+
+	if err := s.repo.SetSetting("retur_approval_threshold", strconv.FormatFloat(threshold, 'f', -1, 64)); err != nil {
+		return nil, err
+	}
+
+	return &dto.ApprovalThresholdResponse{
+		Threshold: threshold,
+		Message:   "Batas approval berhasil diatur",
+	}, nil
+}
+
+func (s *returnService) GetApprovalThreshold() (*dto.ApprovalThresholdResponse, error) {
+	threshold := getThreshold(s.repo)
+	return &dto.ApprovalThresholdResponse{
+		Threshold: threshold,
+		Message:   "Batas approval retur",
+	}, nil
+}
+
+func getThreshold(repo repository.TransactionRepository) float64 {
+	value, err := repo.GetSetting("retur_approval_threshold")
+	if err != nil {
+		return 100000
+	}
+	threshold, err := strconv.ParseFloat(value, 64)
+	if err != nil {
+		return 100000
+	}
+	return threshold
 }

@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"gorm.io/gorm"
-	"medix-be/internal/transaction/model"
+	"medix-be/internal/transaction/model/entities"
 	"medix-be/internal/transaction/model/dto"
 	"medix-be/internal/transaction/repository"
 )
@@ -31,8 +31,8 @@ func NewCoreService(repo repository.TransactionRepository) CoreService {
 }
 
 func (s *transactionCoreService) CreateTransaction(userID uint, req dto.CreateTransactionRequest) (*dto.TransactionResponse, error) {
-	var transaksi model.Transaksi
-	var detailsEntities []model.DetailPembelian
+	var transaksi entities.Transaksi
+	var detailsEntities []entities.DetailPembelian
 	var totalHarga float64
 
 	seenObat := make(map[uint]bool)
@@ -77,7 +77,7 @@ func (s *transactionCoreService) CreateTransaction(userID uint, req dto.CreateTr
 
 			detailsEntities = append(
 				detailsEntities,
-				model.DetailPembelian{
+				entities.DetailPembelian{
 					IDObat:      item.IDObat,
 					Jumlah:      item.Jumlah,
 					HargaSatuan: hargaSatuan,
@@ -87,10 +87,10 @@ func (s *transactionCoreService) CreateTransaction(userID uint, req dto.CreateTr
 		}
 
 		// Buat transaksi utama
-		transaksi = model.Transaksi{
+		transaksi = entities.Transaksi{
 			IDUser:     userID,
 			TotalHarga: totalHarga,
-			Status:     model.StatusTransaksiSelesai,
+			Status:     entities.StatusTransaksiSelesai,
 		}
 
 		if err := s.repo.Create(tx, &transaksi); err != nil {
@@ -130,13 +130,13 @@ func (s *transactionCoreService) CreateTransaction(userID uint, req dto.CreateTr
 }
 
 func (s *transactionCoreService) AddToCart(userID uint, req dto.AddToCartRequest) (*dto.TransactionResponse, error) {
-	var transaksi model.Transaksi
+	var transaksi entities.Transaksi
 
 	// Find today's transaction for this user (if any)
-	var existingTransaksi model.Transaksi
+	var existingTransaksi entities.Transaksi
 	error := s.repo.GetDB().
 		Preload("Details").
-		Where("id_user = ? AND status = ?", userID, model.StatusTransaksiSelesai).
+		Where("id_user = ? AND status = ?", userID, entities.StatusTransaksiSelesai).
 		Where("DATE(tgl_transaksi) = CURRENT_DATE").
 		First(&existingTransaksi).
 		Error
@@ -146,9 +146,9 @@ func (s *transactionCoreService) AddToCart(userID uint, req dto.AddToCartRequest
 			transaksi = existingTransaksi
 		} else {
 			// Create new transaction
-			transaksi = model.Transaksi{
+			transaksi = entities.Transaksi{
 				IDUser:  userID,
-				Status:  model.StatusTransaksiSelesai,
+				Status:  entities.StatusTransaksiSelesai,
 			}
 			if err := s.repo.Create(s.repo.GetDB(), &transaksi); err != nil {
 				return nil, fmt.Errorf("failed to create transaction: %w", err)
@@ -184,12 +184,12 @@ func (s *transactionCoreService) AddToCart(userID uint, req dto.AddToCartRequest
 	transaksi.TotalHarga += subtotal
 
 	// Update transaction total
-	if err := s.repo.UpdateStatus(s.repo.GetDB(), transaksi.IDTransaksi, model.StatusTransaksiSelesai); err != nil {
+	if err := s.repo.UpdateStatus(s.repo.GetDB(), transaksi.IDTransaksi, entities.StatusTransaksiSelesai); err != nil {
 		return nil, fmt.Errorf("failed to update transaction total: %w", err)
 	}
 
 	// Create detail entity
-	detailEntity := model.DetailPembelian{
+	detailEntity := entities.DetailPembelian{
 		IDTransaksi: transaksi.IDTransaksi,
 		IDObat:      req.IDObat,
 		Jumlah:      req.Jumlah,
@@ -250,7 +250,7 @@ func (s *transactionCoreService) CancelTransaction(id uint, userID uint, userRol
 		return tx.Error
 	}
 
-	var transaksi model.Transaksi
+	var transaksi entities.Transaksi
 
 	err := tx.
 		Preload("Details").
@@ -264,7 +264,7 @@ func (s *transactionCoreService) CancelTransaction(id uint, userID uint, userRol
 	}
 
 	// Already cancelled
-	if transaksi.Status == model.StatusTransaksiDibatalkan {
+	if transaksi.Status == entities.StatusTransaksiDibatalkan {
 		tx.Rollback()
 		return errors.New("transaction already cancelled")
 	}
@@ -303,7 +303,7 @@ func (s *transactionCoreService) CancelTransaction(id uint, userID uint, userRol
 	}
 
 	// Change status to cancelled
-	if err := s.repo.UpdateStatus(tx, id, model.StatusTransaksiDibatalkan); err != nil {
+	if err := s.repo.UpdateStatus(tx, id, entities.StatusTransaksiDibatalkan); err != nil {
 		tx.Rollback()
 		return err
 	}
@@ -322,7 +322,7 @@ func (s *transactionCoreService) ProcessPayment(id uint, userID uint, req dto.Pa
 	}
 
 	// Cari transaksi
-	var transaksi model.Transaksi
+	var transaksi entities.Transaksi
 	err := tx.
 		Preload("Details").
 		Where("id_transaksi = ?", id).
@@ -335,7 +335,7 @@ func (s *transactionCoreService) ProcessPayment(id uint, userID uint, req dto.Pa
 	}
 
 	// Validasi status transaksi (harus belum dibayar/final)
-	if transaksi.Status != model.StatusTransaksiSelesai && transaksi.Status != model.StatusTransaksiProsesBayar {
+	if transaksi.Status != entities.StatusTransaksiSelesai && transaksi.Status != entities.StatusTransaksiProsesBayar {
 		tx.Rollback()
 		return nil, errors.New("transaksi tidak dapat dibayar, status saat ini: " + strconv.Itoa(transaksi.Status))
 	}
@@ -360,7 +360,7 @@ func (s *transactionCoreService) ProcessPayment(id uint, userID uint, req dto.Pa
 	transaksi.MetodeBayar = req.MetodeBayar
 	
 	// Update status transaksi menjadi final (status 2)
-	if err := s.repo.UpdateStatus(tx, id, model.StatusTransaksiProsesBayar); err != nil {
+	if err := s.repo.UpdateStatus(tx, id, entities.StatusTransaksiProsesBayar); err != nil {
 		tx.Rollback()
 		return nil, err
 	}
@@ -440,7 +440,7 @@ func (s *transactionCoreService) GetTodayTransactions(userID uint) (*dto.TodayTr
 	}, nil
 }
 
-func toTransactionResponse(t model.Transaksi) dto.TransactionResponse {
+func toTransactionResponse(t entities.Transaksi) dto.TransactionResponse {
 	var detailsRes []dto.DetailItemResponse
 	for _, d := range t.Details {
 		detailsRes = append(detailsRes, dto.DetailItemResponse{

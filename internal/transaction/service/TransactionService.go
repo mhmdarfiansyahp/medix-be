@@ -78,6 +78,22 @@ func (s *TransactionService) ApproveReturn(adminID uint, returnID uint) (*dto.Ap
 	return s.returnService.ApproveReturn(adminID, returnID)
 }
 
+func (s *TransactionService) GetReturnByID(returnID uint) (*dto.CreateReturnResponse, error) {
+	return s.returnService.GetReturnByID(returnID)
+}
+
+func (s *TransactionService) RejectReturn(adminID uint, returnID uint, alasan string) (*dto.RejectReturnResponse, error) {
+	return s.returnService.RejectReturn(adminID, returnID, alasan)
+}
+
+func (s *TransactionService) SetApprovalThreshold(threshold float64) (*dto.ApprovalThresholdResponse, error) {
+	return s.returnService.SetApprovalThreshold(threshold)
+}
+
+func (s *TransactionService) GetApprovalThreshold() (*dto.ApprovalThresholdResponse, error) {
+	return s.returnService.GetApprovalThreshold()
+}
+
 // Receipt operations
 func (s *TransactionService) GetReceipt(id uint) (*dto.ReceiptResponse, error) {
 	return s.receiptService.GetReceipt(id)

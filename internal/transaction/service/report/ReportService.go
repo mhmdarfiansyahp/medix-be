@@ -1,7 +1,7 @@
 package report
 
 import (
-	"medix-be/internal/transaction/model"
+	"medix-be/internal/transaction/model/entities"
 	"medix-be/internal/transaction/model/dto"
 	"medix-be/internal/transaction/repository"
 )
@@ -70,7 +70,7 @@ func (s *reportService) GetTodayKasirReport(userID uint) (*dto.TodayKasirReportR
 }
 
 // Helper function (used by core service)
-func toTransactionResponse(t model.Transaksi) dto.TransactionResponse {
+func toTransactionResponse(t entities.Transaksi) dto.TransactionResponse {
 	var detailsRes []dto.DetailItemResponse
 	for _, d := range t.Details {
 		detailsRes = append(detailsRes, dto.DetailItemResponse{

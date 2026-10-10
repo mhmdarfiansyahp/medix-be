@@ -6,12 +6,12 @@ import (
 	"gorm.io/gorm"
 
 	medicine "medix-be/internal/medicine/model/entities"
-	"medix-be/internal/transaction/model"
+	"medix-be/internal/transaction/model/entities"
 )
 
 type TransactionRepository interface {
-	Create(tx *gorm.DB, transaksi *model.Transaksi) error
-	CreateDetail(tx *gorm.DB, detail *model.DetailPembelian) error
+	Create(tx *gorm.DB, transaksi *entities.Transaksi) error
+	CreateDetail(tx *gorm.DB, detail *entities.DetailPembelian) error
 
 	// Obat
 	FindObatByID(tx *gorm.DB, idObat uint) (*medicine.Obat, error)
@@ -19,20 +19,25 @@ type TransactionRepository interface {
 	RestoreStokObat(tx *gorm.DB, idObat uint, jumlah int) error
 
 	// Transaksi
-	FindAll() ([]model.Transaksi, error)
-	FindByID(id uint) (*model.Transaksi, error)
-	FindTodayByUser(idUser uint) ([]*model.Transaksi, error)
+	FindAll() ([]entities.Transaksi, error)
+	FindByID(id uint) (*entities.Transaksi, error)
+	FindTodayByUser(idUser uint) ([]*entities.Transaksi, error)
 	GetTodaySummary(idUser uint) (float64, int, error)
 	GetTodayPaymentBreakdown(idUser uint) (float64, float64, error)
 	UpdateStatus(tx *gorm.DB, id uint, status int) error
-	GetUser(tx *gorm.DB, id uint) (*model.User, error)
+	GetUser(tx *gorm.DB, id uint) (*entities.User, error)
 
 	// Retur
-	CreateReturn(tx *gorm.DB, ret *model.Return) error
-	CreateReturnItem(tx *gorm.DB, item *model.ReturnItem) error
-	GetReturnByID(id uint) (*model.Return, error)
-	FindTodayReturnsByUser(idUser uint) ([]model.Return, error)
+	CreateReturn(tx *gorm.DB, ret *entities.Return) error
+	CreateReturnItem(tx *gorm.DB, item *entities.ReturnItem) error
+	GetReturnByID(id uint) (*entities.Return, error)
+	FindTodayReturnsByUser(idUser uint) ([]entities.Return, error)
 	UpdateReturnStatus(tx *gorm.DB, id uint, status string) error
+	UpdateReturnStatusWithReason(tx *gorm.DB, id uint, status string, reason string) error
+
+	// Pengaturan
+	GetSetting(key string) (string, error)
+	SetSetting(key string, value string) error
 
 	GetDB() *gorm.DB
 }
@@ -51,11 +56,11 @@ func (r *transactionRepository) GetDB() *gorm.DB {
 	return r.db
 }
 
-func (r *transactionRepository) Create(tx *gorm.DB, transaksi *model.Transaksi) error {
+func (r *transactionRepository) Create(tx *gorm.DB, transaksi *entities.Transaksi) error {
 	return tx.Create(transaksi).Error
 }
 
-func (r *transactionRepository) CreateDetail(tx *gorm.DB, detail *model.DetailPembelian) error {
+func (r *transactionRepository) CreateDetail(tx *gorm.DB, detail *entities.DetailPembelian) error {
 	return tx.Create(detail).Error
 }
 
@@ -114,9 +119,9 @@ func (r *transactionRepository) RestoreStokObat(tx *gorm.DB, idObat uint, jumlah
 	return result.Error
 }
 
-func (r *transactionRepository) FindAll() ([]model.Transaksi, error) {
+func (r *transactionRepository) FindAll() ([]entities.Transaksi, error) {
 
-	var list []model.Transaksi
+	var list []entities.Transaksi
 
 	err := r.db.
 		Preload("Details").
@@ -126,9 +131,9 @@ func (r *transactionRepository) FindAll() ([]model.Transaksi, error) {
 	return list, err
 }
 
-func (r *transactionRepository) FindByID(id uint) (*model.Transaksi, error) {
+func (r *transactionRepository) FindByID(id uint) (*entities.Transaksi, error) {
 
-	var transaksi model.Transaksi
+	var transaksi entities.Transaksi
 
 	err := r.db.
 		Preload("Details").
@@ -142,9 +147,9 @@ func (r *transactionRepository) FindByID(id uint) (*model.Transaksi, error) {
 	return &transaksi, nil
 }
 
-func (r *transactionRepository) FindTodayByUser(idUser uint) ([]*model.Transaksi, error) {
+func (r *transactionRepository) FindTodayByUser(idUser uint) ([]*entities.Transaksi, error) {
 
-	var list []*model.Transaksi
+	var list []*entities.Transaksi
 
 	err := r.db.
 		Preload("Details").
@@ -163,10 +168,10 @@ func (r *transactionRepository) GetTodaySummary(idUser uint) (float64, int, erro
 	var count int64
 
 	err := r.db.
-		Model(&model.Transaksi{}).
+		Model(&entities.Transaksi{}).
 		Where("id_user = ?", idUser).
 		Where("DATE(tgl_transaksi) = CURRENT_DATE").
-		Where("status = ?", model.StatusTransaksiSelesai).
+		Where("status = ?", entities.StatusTransaksiSelesai).
 		Select("COALESCE(SUM(total_harga), 0)").
 		Scan(&total).
 		Error
@@ -176,10 +181,10 @@ func (r *transactionRepository) GetTodaySummary(idUser uint) (float64, int, erro
 	}
 
 	err = r.db.
-		Model(&model.Transaksi{}).
+		Model(&entities.Transaksi{}).
 		Where("id_user = ?", idUser).
 		Where("DATE(tgl_transaksi) = CURRENT_DATE").
-		Where("status = ?", model.StatusTransaksiSelesai).
+		Where("status = ?", entities.StatusTransaksiSelesai).
 		Count(&count).
 		Error
 
@@ -193,7 +198,7 @@ func (r *transactionRepository) GetTodaySummary(idUser uint) (float64, int, erro
 func (r *transactionRepository) UpdateStatus(tx *gorm.DB, id uint, status int) error {
 
 	return tx.
-		Model(&model.Transaksi{}).
+		Model(&entities.Transaksi{}).
 		Where("id_transaksi = ?", id).
 		Update("status", status).
 		Error
@@ -202,10 +207,10 @@ func (r *transactionRepository) UpdateStatus(tx *gorm.DB, id uint, status int) e
 func (r *transactionRepository) GetTodayPaymentBreakdown(idUser uint) (float64, float64, error) {
 	var tunai, nonTunai float64
 	err := r.db.
-		Model(&model.Transaksi{}).
+		Model(&entities.Transaksi{}).
 		Where("id_user = ?", idUser).
 		Where("DATE(tgl_transaksi) = CURRENT_DATE").
-		Where("status = ?", model.StatusTransaksiSelesai).
+		Where("status = ?", entities.StatusTransaksiSelesai).
 		Where("metode_bayar = ?", "tunai").
 		Select("COALESCE(SUM(total_harga), 0)").
 		Scan(&tunai).
@@ -215,10 +220,10 @@ func (r *transactionRepository) GetTodayPaymentBreakdown(idUser uint) (float64, 
 	}
 
 	err = r.db.
-		Model(&model.Transaksi{}).
+		Model(&entities.Transaksi{}).
 		Where("id_user = ?", idUser).
 		Where("DATE(tgl_transaksi) = CURRENT_DATE").
-		Where("status = ?", model.StatusTransaksiSelesai).
+		Where("status = ?", entities.StatusTransaksiSelesai).
 		Where("metode_bayar != ?", "tunai").
 		Where("metode_bayar IS NOT NULL").
 		Select("COALESCE(SUM(total_harga), 0)").
@@ -231,8 +236,8 @@ func (r *transactionRepository) GetTodayPaymentBreakdown(idUser uint) (float64, 
 	return tunai, nonTunai, nil
 }
 
-func (r *transactionRepository) GetUser(tx *gorm.DB, id uint) (*model.User, error) {
-	var user model.User
+func (r *transactionRepository) GetUser(tx *gorm.DB, id uint) (*entities.User, error) {
+	var user entities.User
 	err := tx.
 		Where("id_user = ?", id).
 		First(&user).
@@ -243,8 +248,8 @@ func (r *transactionRepository) GetUser(tx *gorm.DB, id uint) (*model.User, erro
 	return &user, nil
 }
 
-func (r *transactionRepository) FindTodayReturnsByUser(idUser uint) ([]model.Return, error) {
-	var returns []model.Return
+func (r *transactionRepository) FindTodayReturnsByUser(idUser uint) ([]entities.Return, error) {
+	var returns []entities.Return
 	err := r.db.
 		Where("diajukan_oleh = ?", idUser).
 		Where("DATE(tanggal_retur) = CURRENT_DATE").
@@ -258,16 +263,16 @@ func (r *transactionRepository) FindTodayReturnsByUser(idUser uint) ([]model.Ret
 	return returns, nil
 }
 
-func (r *transactionRepository) CreateReturn(tx *gorm.DB, ret *model.Return) error {
+func (r *transactionRepository) CreateReturn(tx *gorm.DB, ret *entities.Return) error {
 	return tx.Create(ret).Error
 }
 
-func (r *transactionRepository) CreateReturnItem(tx *gorm.DB, item *model.ReturnItem) error {
+func (r *transactionRepository) CreateReturnItem(tx *gorm.DB, item *entities.ReturnItem) error {
 	return tx.Create(item).Error
 }
 
-func (r *transactionRepository) GetReturnByID(id uint) (*model.Return, error) {
-	var ret model.Return
+func (r *transactionRepository) GetReturnByID(id uint) (*entities.Return, error) {
+	var ret entities.Return
 	err := r.db.
 		Preload("Items").
 		Where("id_return = ?", id).
@@ -281,8 +286,39 @@ func (r *transactionRepository) GetReturnByID(id uint) (*model.Return, error) {
 
 func (r *transactionRepository) UpdateReturnStatus(tx *gorm.DB, id uint, status string) error {
 	return tx.
-		Model(&model.Return{}).
+		Model(&entities.Return{}).
 		Where("id_return = ?", id).
 		Update("status", status).
+		Error
+}
+
+func (r *transactionRepository) UpdateReturnStatusWithReason(tx *gorm.DB, id uint, status string, reason string) error {
+	return tx.
+		Model(&entities.Return{}).
+		Where("id_return = ?", id).
+		Updates(map[string]interface{}{
+			"status":           status,
+			"alasan_penolakan": reason,
+		}).
+		Error
+}
+
+func (r *transactionRepository) GetSetting(key string) (string, error) {
+	var s entities.Pengaturan
+	err := r.db.
+		Where("key = ?", key).
+		First(&s).
+		Error
+	if err != nil {
+		return "", err
+	}
+	return s.Value, nil
+}
+
+func (r *transactionRepository) SetSetting(key string, value string) error {
+	return r.db.
+		Model(&entities.Pengaturan{}).
+		Where("key = ?", key).
+		Update("value", value).
 		Error
 }

@@ -106,3 +106,27 @@ type TodayKasirReportResponse struct {
 	Returns      []ReturnSummaryResponse    `json:"returns"`
 	Summary      TransactionSummaryResponse `json:"summary"`
 }
+
+// Reject return request
+type RejectReturnRequest struct {
+	Alasan string `json:"alasan" binding:"required"`
+}
+
+// Reject return response
+type RejectReturnResponse struct {
+	IDReturn uint   `json:"id_return"`
+	Status   string `json:"status"`
+	Alasan   string `json:"alasan"`
+	Message  string `json:"message"`
+}
+
+// Approval threshold request
+type ApprovalThresholdRequest struct {
+	Threshold float64 `json:"threshold" binding:"required,gte=0"`
+}
+
+// Approval threshold response
+type ApprovalThresholdResponse struct {
+	Threshold float64 `json:"threshold"`
+	Message   string  `json:"message"`
+}
