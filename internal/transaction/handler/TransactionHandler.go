@@ -55,6 +55,7 @@ func (h *TransactionHandler) RegisterRouter() {
 	h.router.PATCH("/:id/cancel", h.Cancel())
 	h.router.GET("/:id/receipt", h.GetReceipt())
 	h.router.POST("/:id/payment", h.ProcessPayment())
+	h.router.GET("/returns", h.GetAllReturns())
 	h.router.POST("/returns", h.CreateReturn())
 	h.router.GET("/returns/:id/view", h.ViewReturnDetails())
 	h.router.POST("/returns/:id/reject", middleware.RequireRoles("admin", "owner"), h.RejectReturn())
@@ -437,6 +438,18 @@ func (h *TransactionHandler) CreateReturn() gin.HandlerFunc {
 		}
 
 		response.Success(c, http.StatusOK, "Return created successfully", res)
+	}
+}
+
+func (h *TransactionHandler) GetAllReturns() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		res, err := h.transactionService.GetAllReturns()
+		if err != nil {
+			response.Error(c, http.StatusInternalServerError, err.Error())
+			return
+		}
+
+		response.Success(c, http.StatusOK, "Return list retrieved successfully", res)
 	}
 }
 

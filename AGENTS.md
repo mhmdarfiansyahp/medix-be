@@ -13,6 +13,7 @@ Compact guide for OpenCode sessions. If a fact is obvious from filenames, it is 
 - Write code, comments, commit messages, PR bodies, and user-facing docs in normal prose.
 - Ponytail rule: pick the laziest solution that works; prefer stdlib and native features.
 - Leave one runnable check per non-trivial logic change; skip extra tests unless requested.
+- gunakan bahasa indonesia
 
 ## Stack & entrypoint
 

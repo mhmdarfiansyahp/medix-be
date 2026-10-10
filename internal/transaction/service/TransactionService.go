@@ -82,6 +82,10 @@ func (s *TransactionService) GetReturnByID(returnID uint) (*dto.CreateReturnResp
 	return s.returnService.GetReturnByID(returnID)
 }
 
+func (s *TransactionService) GetAllReturns() ([]*dto.CreateReturnResponse, error) {
+	return s.returnService.GetAllReturns()
+}
+
 func (s *TransactionService) RejectReturn(adminID uint, returnID uint, alasan string) (*dto.RejectReturnResponse, error) {
 	return s.returnService.RejectReturn(adminID, returnID, alasan)
 }

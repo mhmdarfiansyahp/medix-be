@@ -31,6 +31,7 @@ type TransactionRepository interface {
 	CreateReturn(tx *gorm.DB, ret *entities.Return) error
 	CreateReturnItem(tx *gorm.DB, item *entities.ReturnItem) error
 	GetReturnByID(id uint) (*entities.Return, error)
+	FindAllReturns() ([]entities.Return, error)
 	FindTodayReturnsByUser(idUser uint) ([]entities.Return, error)
 	UpdateReturnStatus(tx *gorm.DB, id uint, status string) error
 	UpdateReturnStatusWithReason(tx *gorm.DB, id uint, status string, reason string) error
@@ -282,6 +283,19 @@ func (r *transactionRepository) GetReturnByID(id uint) (*entities.Return, error)
 		return nil, err
 	}
 	return &ret, nil
+}
+
+func (r *transactionRepository) FindAllReturns() ([]entities.Return, error) {
+	var returns []entities.Return
+	err := r.db.
+		Preload("Items").
+		Order("tanggal_retur DESC").
+		Find(&returns).
+		Error
+	if err != nil {
+		return nil, err
+	}
+	return returns, nil
 }
 
 func (r *transactionRepository) UpdateReturnStatus(tx *gorm.DB, id uint, status string) error {

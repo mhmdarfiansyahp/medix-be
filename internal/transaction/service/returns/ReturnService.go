@@ -15,6 +15,7 @@ type ReturnService interface {
 	CreateReturn(userID uint, req dto.CreateReturnRequest) (*dto.CreateReturnResponse, error)
 	ApproveReturn(adminID uint, returnID uint) (*dto.ApproveReturnResponse, error)
 	GetReturnByID(returnID uint) (*dto.CreateReturnResponse, error)
+	GetAllReturns() ([]*dto.CreateReturnResponse, error)
 	RejectReturn(adminID uint, returnID uint, alasan string) (*dto.RejectReturnResponse, error)
 	SetApprovalThreshold(threshold float64) (*dto.ApprovalThresholdResponse, error)
 	GetApprovalThreshold() (*dto.ApprovalThresholdResponse, error)
@@ -224,27 +225,7 @@ func (s *returnService) GetReturnByID(returnID uint) (*dto.CreateReturnResponse,
 		return nil, errors.New("retur tidak ditemukan")
 	}
 
-	respItems := make([]dto.ReturnItemResponse, 0, len(ret.Items))
-	for _, it := range ret.Items {
-		respItems = append(respItems, dto.ReturnItemResponse{
-			IDItem:       it.IDItem,
-			IDObat:       it.IDObat,
-			Jumlah:       it.Jumlah,
-			AlasanItem:   it.AlasanItem,
-			KondisiLayak: it.KondisiLayak,
-			StokKembali:  it.StokKembali,
-		})
-	}
-
-	return &dto.CreateReturnResponse{
-		IDReturn:     ret.IDReturn,
-		IDTransaksi:  ret.IDTransaksi,
-		Alasan:       ret.Alasan,
-		TanggalRetur: ret.TanggalRetur.Format(time.RFC3339),
-		DiajukanOleh: ret.DiajukanOleh,
-		Status:       ret.Status,
-		Items:        respItems,
-	}, nil
+	return s.buildReturnResponse(ret), nil
 }
 
 func (s *returnService) RejectReturn(adminID uint, returnID uint, alasan string) (*dto.RejectReturnResponse, error) {
@@ -315,4 +296,76 @@ func getThreshold(repo repository.TransactionRepository) float64 {
 		return 100000
 	}
 	return threshold
+}
+
+func (s *returnService) GetAllReturns() ([]*dto.CreateReturnResponse, error) {
+	returns, err := s.repo.FindAllReturns()
+	if err != nil {
+		return nil, err
+	}
+
+	resp := make([]*dto.CreateReturnResponse, 0, len(returns))
+	for i := range returns {
+		resp = append(resp, s.buildReturnResponse(&returns[i]))
+	}
+
+	return resp, nil
+}
+
+// buildReturnResponse maps a Return entity into its DTO, enriching items with
+// the medicine name and purchase price snapshot from the original transaction.
+// ponytail: N+1 lookups per return; batch-load if the returns list grows large.
+func (s *returnService) buildReturnResponse(ret *entities.Return) *dto.CreateReturnResponse {
+	db := s.repo.GetDB()
+
+	var transaksi *entities.Transaksi
+	if trx, err := s.repo.FindByID(ret.IDTransaksi); err == nil {
+		transaksi = trx
+	}
+
+	respItems := make([]dto.ReturnItemResponse, 0, len(ret.Items))
+	var total float64
+	for _, it := range ret.Items {
+		var harga float64
+		if transaksi != nil {
+			for _, d := range transaksi.Details {
+				if d.IDObat == it.IDObat {
+					harga = d.HargaSatuan
+					break
+				}
+			}
+		}
+
+		nama := ""
+		if obat, err := s.repo.FindObatByID(db, it.IDObat); err == nil {
+			nama = obat.NamaObat
+		}
+
+		subtotal := harga * float64(it.Jumlah)
+		total += subtotal
+
+		respItems = append(respItems, dto.ReturnItemResponse{
+			IDItem:       it.IDItem,
+			IDObat:       it.IDObat,
+			NamaObat:     nama,
+			Jumlah:       it.Jumlah,
+			HargaSatuan:  harga,
+			Subtotal:     subtotal,
+			AlasanItem:   it.AlasanItem,
+			KondisiLayak: it.KondisiLayak,
+			StokKembali:  it.StokKembali,
+		})
+	}
+
+	return &dto.CreateReturnResponse{
+		IDReturn:        ret.IDReturn,
+		IDTransaksi:     ret.IDTransaksi,
+		Alasan:          ret.Alasan,
+		AlasanPenolakan: ret.AlasanPenolakan,
+		TanggalRetur:    ret.TanggalRetur.Format(time.RFC3339),
+		DiajukanOleh:    ret.DiajukanOleh,
+		Status:          ret.Status,
+		TotalNilai:      total,
+		Items:           respItems,
+	}
 }
