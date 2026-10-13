@@ -30,28 +30,27 @@ func NewReturnService(repo repository.TransactionRepository) ReturnService {
 }
 
 func (s *returnService) CreateReturn(userID uint, req dto.CreateReturnRequest) (*dto.CreateReturnResponse, error) {
-	tx := s.repo.GetDB().Begin()
-	if tx.Error != nil {
-		return nil, tx.Error
-	}
-
-	// Cari transaksi asli
+	// Cari transaksi asli menggunakan global DB (tanpa transaksi)
 	var transaksi entities.Transaksi
-	err := tx.
+	err := s.repo.GetDB().
 		Preload("Details").
 		Where("id_transaksi = ?", req.IDTransaksi).
 		First(&transaksi).
 		Error
 
 	if err != nil {
-		tx.Rollback()
 		return nil, errors.New("transaksi tidak ditemukan")
 	}
 
 	// Transaksi harus sudah selesai/final
 	if transaksi.Status != entities.StatusTransaksiSelesai && transaksi.Status != entities.StatusTransaksiProsesBayar {
-		tx.Rollback()
 		return nil, errors.New("hanya transaksi yang sudah selesai yang dapat diretur")
+	}
+
+	// Mulai transaksi terpisah untuk operasi selanjutnya
+	tx := s.repo.GetDB().Begin()
+	if tx.Error != nil {
+		return nil, tx.Error
 	}
 
 	// Validasi user: kasir hanya boleh retur transaksi miliknya sendiri, admin/owner boleh semua

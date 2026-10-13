@@ -1,0 +1,43 @@
+C:\PROJECT\Medix\medix-be\01-auth (1).md
+C:\PROJECT\Medix\medix-be\01-auth.md
+C:\PROJECT\Medix\medix-be\02-lihat-obat.md
+C:\PROJECT\Medix\medix-be\02-obat.md
+C:\PROJECT\Medix\medix-be\03-transaksi.md
+C:\PROJECT\Medix\medix-be\03-user-management.md
+C:\PROJECT\Medix\medix-be\04-notifikasi-laporan-ringkas.md
+C:\PROJECT\Medix\medix-be\04-notifikasi-stok.md
+C:\PROJECT\Medix\medix-be\05-laporan-dashboard.md
+C:\PROJECT\Medix\medix-be\06-approval-transaksi.md
+C:\PROJECT\Medix\medix-be\06-transaksi.md
+C:\PROJECT\Medix\medix-be\AGENTS.md
+C:\PROJECT\Medix\medix-be\DOCUMENTATION.md
+C:\PROJECT\Medix\medix-be\Medix\Get data.yml
+C:\PROJECT\Medix\medix-be\Medix\Jenis Obat\Create data.yml
+C:\PROJECT\Medix\medix-be\Medix\Jenis Obat\Get All.yml
+C:\PROJECT\Medix\medix-be\Medix\Jenis Obat\Update data.yml
+C:\PROJECT\Medix\medix-be\Medix\Jenis Obat\folder.yml
+C:\PROJECT\Medix\medix-be\Medix\Obat\Create obat.yml
+C:\PROJECT\Medix\medix-be\Medix\Obat\Get All.yml
+C:\PROJECT\Medix\medix-be\Medix\Obat\Get data by Barcode.yml
+C:\PROJECT\Medix\medix-be\Medix\Obat\Get data.yml
+C:\PROJECT\Medix\medix-be\Medix\Obat\Update Status Obat.yml
+C:\PROJECT\Medix\medix-be\Medix\Obat\Update obat.yml
+C:\PROJECT\Medix\medix-be\Medix\Obat\folder.yml
+C:\PROJECT\Medix\medix-be\Medix\Transaction\Cencel data.yml
+C:\PROJECT\Medix\medix-be\Medix\Transaction\Create data.yml
+C:\PROJECT\Medix\medix-be\Medix\Transaction\Get All data.yml
+C:\PROJECT\Medix\medix-be\Medix\Transaction\Get Today.yml
+C:\PROJECT\Medix\medix-be\Medix\Transaction\Get data.yml
+C:\PROJECT\Medix\medix-be\Medix\Transaction\folder.yml
+C:\PROJECT\Medix\medix-be\Medix\User\Create data.yml
+C:\PROJECT\Medix\medix-be\Medix\User\Get data.yml
+C:\PROJECT\Medix\medix-be\Medix\User\Update data.yml
+C:\PROJECT\Medix\medix-be\Medix\User\folder.yml
+C:\PROJECT\Medix\medix-be\Medix\opencollection.yml
+C:\PROJECT\Medix\medix-be\README.md
+C:\PROJECT\Medix\medix-be\USER_STORIES.md
+C:\PROJECT\Medix\medix-be\config\config.yaml
+C:\PROJECT\Medix\medix-be\docker-compose.yml
+C:\PROJECT\Medix\medix-be\docs\HOW_TO_VIEW.md
+C:\PROJECT\Medix\medix-be\docs\README.md
+C:\PROJECT\Medix\medix-be\docs\openapi.yaml

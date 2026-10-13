@@ -369,11 +369,13 @@ func (s *transactionCoreService) ProcessPayment(id uint, userID uint, req dto.Pa
 	if err := tx.Commit().Error; err != nil {
 		return nil, err
 	}
-
-	// Reload transaksi untuk mendapatkan data terbaru
-	if err := tx.Preload("Details").First(&transaksi, id).Error; err != nil {
+	
+	// Reload transaksi untuk mendapatkan data terbaru (menggunakan DB setelah commit)
+	var latest entities.Transaksi
+	if err := s.repo.GetDB().Preload("Details").First(&latest, id).Error; err != nil {
 		return nil, err
 	}
+	transaksi = latest
 
 	return &dto.PaymentResponse{
 		IDTransaksi:  transaksi.IDTransaksi,

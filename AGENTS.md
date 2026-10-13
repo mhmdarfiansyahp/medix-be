@@ -95,3 +95,56 @@ go run cmd/api/main.go
 
 # No lint or test commands configured — add only if you also add tooling config.
 ```
+
+### Available Skills for Prompting
+
+The following skills are available and can be automatically discovered when needed:
+
+- `api-and-interface-design` - Guides stable API and interface design
+- `banner-design` - Design banners for social media, ads, website heroes
+- `brand` - Brand voice, visual identity, messaging frameworks
+- `browser-testing-with-devtools` - Tests in real browsers via Chrome DevTools
+- `ci-cd-and-automation` - Automates CI/CD pipeline setup
+- `code-review-and-quality` - Conducts multi-axis code review
+- `code-simplification` - Simplifies code for clarity
+- `constraint-driven-development` - Establishes quality bar as a written contract
+- `context-engineering` - Optimizes agent context setup
+- `debugging-and-error-recovery` - Systematic root-cause debugging
+- `deprecation-and-migration` - Manages deprecation and migration
+- `design-system` - Token architecture, component specifications
+- `design` - Comprehensive design skill: brand identity, design tokens
+- `documentation-and-adrs` - Records decisions and documentation
+- `doubt-driven-development` - Subjects every non-trivial decision to adversarial review
+- `frontend-ui-engineering` - Builds production-quality, accessible user interfaces
+- `git-workflow-and-versioning` - Structures git workflow practices
+- `idea-refine` - Refines raw ideas into sharp, actionable concepts
+- `incremental-implementation` - Delivers changes incrementally in thin, verifiable slices
+- `interview-me` - Extracts what the user actually wants
+- `observability-and-instrumentation` - Instruments code for production visibility
+- `performance-optimization` - Optimizes application performance
+- `planning-and-task-breakdown` - Breaks work into ordered tasks
+- `ponytail-audit` - Whole-repo audit for over-engineering
+- `ponytail-debt` - Harvests ponytail deferrals into a debt ledger
+- `ponytail-gain` - Show ponytail's measured impact as a compact scoreboard
+- `ponytail-help` - Quick-reference card for all ponytail modes, skills, and commands
+- `ponytail-review` - Code review focused exclusively on over-engineering
+- `security-and-hardening` - Hardens code against vulnerabilities
+- `shipping-and-launch` - Prepares production launches
+- `slides` - Create strategic HTML presentations with Chart.js
+- `source-driven-development` - Grounds implementation decisions in official documentation
+- `spec-driven-development` - Creates specs before coding
+- `test-driven-development` - Drives development with tests using the red-green-refactor loop
+- `ui-styling` - Create beautiful, accessible user interfaces with shadcn/ui
+
+### Skill Usage Guide
+
+To use a specific skill when you want to work on a particular type of task:
+
+1. **Identify your development phase**: Use `using-agent-skills` to discover which skill is appropriate for your task
+2. **Specify the skill in your prompt**: Start your prompt with `Skill: <skill-name>`
+3. **The skill will be automatically loaded and applied**: Based on your task requirements
+
+For example:
+- `Skill: frontend-ui-engineering Build a responsive dashboard component`
+- `Skill: test-driven-development Write tests for the user authentication flow`
+- `Skill: api-and-interface-design Design a RESTful API for the orders endpoint`

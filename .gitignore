@@ -53,3 +53,5 @@ temp/
 Thumbs.db
 Desktop.ini
 *.jsonc
+
+*.opencode/

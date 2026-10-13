@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"medix-be/internal/common/response"
 	"medix-be/internal/transaction/model/dto"
@@ -57,6 +58,7 @@ func (h *TransactionHandler) RegisterRouter() {
 	h.router.POST("/:id/payment", h.ProcessPayment())
 	h.router.GET("/returns", h.GetAllReturns())
 	h.router.POST("/returns", h.CreateReturn())
+	h.router.POST("/:id/retur", h.CreateReturnByTransaction())
 	h.router.GET("/returns/:id/view", h.ViewReturnDetails())
 	h.router.POST("/returns/:id/reject", middleware.RequireRoles("admin", "owner"), h.RejectReturn())
 	h.router.PUT("/returns/threshold", middleware.RequireRoles("admin", "owner"), h.ConfigureApprovalThreshold())
@@ -433,6 +435,56 @@ func (h *TransactionHandler) CreateReturn() gin.HandlerFunc {
 
 		res, err := h.transactionService.CreateReturn(userID, req)
 		if err != nil {
+			// Return 404 if transaction not found, 400 for other errors
+			if strings.Contains(err.Error(), "transaksi tidak ditemukan") {
+				response.Error(c, http.StatusNotFound, err.Error())
+				return
+			}
+			response.Error(c, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		response.Success(c, http.StatusOK, "Return created successfully", res)
+	}
+}
+
+func (h *TransactionHandler) CreateReturnByTransaction() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		idParam := c.Param("id")
+		id, err := strconv.ParseUint(idParam, 10, 64)
+		if err != nil {
+			response.Error(c, http.StatusBadRequest, "ID transaksi tidak valid")
+			return
+		}
+
+		var req dto.CreateReturnRequest
+		if err := c.ShouldBindJSON(&req); err != nil {
+			response.Error(c, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		// Set IDTransaksi dari path parameter (overrides any in request body)
+		req.IDTransaksi = uint(id)
+
+		userIDValue, exists := c.Get("user_id")
+		if !exists {
+			response.Error(c, http.StatusUnauthorized, "user not authenticated")
+			return
+		}
+
+		userID, ok := userIDValue.(uint)
+		if !ok {
+			response.Error(c, http.StatusUnauthorized, "invalid user ID")
+			return
+		}
+
+		res, err := h.transactionService.CreateReturn(userID, req)
+		if err != nil {
+			// Return 404 if transaction not found, 400 for other errors
+			if strings.Contains(err.Error(), "transaksi tidak ditemukan") {
+				response.Error(c, http.StatusNotFound, err.Error())
+				return
+			}
 			response.Error(c, http.StatusBadRequest, err.Error())
 			return
 		}
