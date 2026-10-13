@@ -57,6 +57,8 @@ func (h *UserHandler) RegisterRouter() {
 	public.POST("", h.CreateUser())
 	public.POST("/refresh", h.RefreshToken())
 	public.POST("/logout", h.Logout())
+	public.POST("/forgot-password", h.ForgotPassword())
+	public.POST("/reset-password", h.ResetPasswordWithToken())
 
 	protected.GET("", h.GetAllUsers())
 	protected.GET("/:id", h.GetUserByID())
@@ -405,5 +407,39 @@ func (h *UserHandler) ResetPassword() gin.HandlerFunc {
 		}
 
 		response.Success(c, http.StatusOK, "Password berhasil direset", res)
+	}
+}
+
+func (h *UserHandler) ForgotPassword() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var payload dto.ForgotPasswordRequest
+		if err := c.ShouldBindJSON(&payload); err != nil {
+			response.Error(c, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		if err := h.userService.ForgotPassword(payload); err != nil {
+			response.Error(c, http.StatusInternalServerError, err.Error())
+			return
+		}
+
+		response.Success(c, http.StatusOK, "Jika akun terdaftar, link/kode reset telah dikirim", nil)
+	}
+}
+
+func (h *UserHandler) ResetPasswordWithToken() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var payload dto.ResetPasswordWithTokenRequest
+		if err := c.ShouldBindJSON(&payload); err != nil {
+			response.Error(c, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		if err := h.userService.ResetPasswordWithToken(payload); err != nil {
+			response.Error(c, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		response.Success(c, http.StatusOK, "Password berhasil direset, silakan login kembali", nil)
 	}
 }

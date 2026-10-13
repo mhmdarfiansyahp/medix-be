@@ -7,7 +7,6 @@ import (
 	"medix-be/internal/transaction/service/core"
 	"medix-be/internal/transaction/service/receipt"
 	"medix-be/internal/transaction/service/report"
-	"medix-be/internal/transaction/service/returns"
 )
 
 // Main orchestrator that coordinates all transaction services.
@@ -15,26 +14,23 @@ import (
 // Internally delegates to specialized services for each concern.
 
 type TransactionService struct {
-	logger        *logrus.Logger
-	coreService   core.CoreService
-	returnService returns.ReturnService
-	receiptService  receipt.ReceiptService
-	reportService   report.ReportService
+	logger         *logrus.Logger
+	coreService    core.CoreService
+	receiptService receipt.ReceiptService
+	reportService  report.ReportService
 }
 
 func NewTransactionService(
 	logger *logrus.Logger,
 	coreService core.CoreService,
-	returnService returns.ReturnService,
 	receiptService receipt.ReceiptService,
 	reportService report.ReportService,
 ) *TransactionService {
 	return &TransactionService{
-		logger:        logger,
-		coreService:   coreService,
-		returnService: returnService,
-		receiptService:  receiptService,
-		reportService:   reportService,
+		logger:         logger,
+		coreService:    coreService,
+		receiptService: receiptService,
+		reportService:  reportService,
 	}
 }
 
@@ -67,35 +63,6 @@ func (s *TransactionService) ProcessPayment(id uint, userID uint, req dto.Paymen
 
 func (s *TransactionService) GetTodayTransactions(userID uint) (*dto.TodayTransactionResponse, error) {
 	return s.coreService.GetTodayTransactions(userID)
-}
-
-// Return operations
-func (s *TransactionService) CreateReturn(userID uint, req dto.CreateReturnRequest) (*dto.CreateReturnResponse, error) {
-	return s.returnService.CreateReturn(userID, req)
-}
-
-func (s *TransactionService) ApproveReturn(adminID uint, returnID uint) (*dto.ApproveReturnResponse, error) {
-	return s.returnService.ApproveReturn(adminID, returnID)
-}
-
-func (s *TransactionService) GetReturnByID(returnID uint) (*dto.CreateReturnResponse, error) {
-	return s.returnService.GetReturnByID(returnID)
-}
-
-func (s *TransactionService) GetAllReturns() ([]*dto.CreateReturnResponse, error) {
-	return s.returnService.GetAllReturns()
-}
-
-func (s *TransactionService) RejectReturn(adminID uint, returnID uint, alasan string) (*dto.RejectReturnResponse, error) {
-	return s.returnService.RejectReturn(adminID, returnID, alasan)
-}
-
-func (s *TransactionService) SetApprovalThreshold(threshold float64) (*dto.ApprovalThresholdResponse, error) {
-	return s.returnService.SetApprovalThreshold(threshold)
-}
-
-func (s *TransactionService) GetApprovalThreshold() (*dto.ApprovalThresholdResponse, error) {
-	return s.returnService.GetApprovalThreshold()
 }
 
 // Receipt operations

@@ -407,27 +407,10 @@ func (s *transactionCoreService) GetTodayTransactions(userID uint) (*dto.TodayTr
 		return nil, err
 	}
 
-	// Get today's returns
-	returns, err := s.repo.FindTodayReturnsByUser(userID)
-	if err != nil {
-		return nil, err
-	}
-
 	result := make([]dto.TransactionResponse, 0, len(transactions))
 
 	for _, transaction := range transactions {
 		result = append(result, toTransactionResponse(*transaction))
-	}
-
-	returnsRes := make([]dto.ReturnSummaryResponse, 0, len(returns))
-	for _, r := range returns {
-		returnsRes = append(returnsRes, dto.ReturnSummaryResponse{
-			IDReturn:     r.IDReturn,
-			IDTransaksi:  r.IDTransaksi,
-			Alasan:       r.Alasan,
-			TanggalRetur: r.TanggalRetur,
-			Status:       r.Status,
-		})
 	}
 
 	return &dto.TodayTransactionResponse{
@@ -438,7 +421,6 @@ func (s *transactionCoreService) GetTodayTransactions(userID uint) (*dto.TodayTr
 			TotalTunai:     totalTunai,
 			TotalNonTunai:  totalNonTunai,
 		},
-		Returns: returnsRes,
 	}, nil
 }
 

@@ -23,11 +23,13 @@ func StartApp(cfg *UserHandler) {
 
 	userRepo := repository.NewUserRepository(cfg.DB)
 	sessionRepo := repository.NewSessionRepository(cfg.DB)
+	resetRepo := repository.NewPasswordResetTokenRepository(cfg.DB)
 	jwtSecret := os.Getenv("JWT_SECRET")
 
 	userSvc := service.NewUserService(
 		userRepo,
 		sessionRepo,
+		resetRepo,
 		jwtSecret,
 	)
 

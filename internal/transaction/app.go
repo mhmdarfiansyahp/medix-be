@@ -5,7 +5,6 @@ import (
 	"medix-be/internal/transaction/repository"
 	"medix-be/internal/transaction/service"
 	"medix-be/internal/transaction/service/core"
-	"medix-be/internal/transaction/service/returns"
 	"medix-be/internal/transaction/service/receipt"
 	"medix-be/internal/transaction/service/report"
 
@@ -27,7 +26,6 @@ func StartApp(cfg *TransactionHandler) {
 	
 	// Create each service
 	coreSvc := core.NewCoreService(transactionRepo)
-	returnsSvc := returns.NewReturnService(transactionRepo)
 	receiptSvc := receipt.NewReceiptService(transactionRepo)
 	reportSvc := report.NewReportService(transactionRepo)
 	
@@ -35,7 +33,6 @@ func StartApp(cfg *TransactionHandler) {
 	transactionSvc := service.NewTransactionService(
 		cfg.Logger,
 		coreSvc,
-		returnsSvc,
 		receiptSvc,
 		reportSvc,
 	)

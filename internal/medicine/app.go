@@ -9,7 +9,6 @@ import (
 	transRepo "medix-be/internal/transaction/repository"
 	transService "medix-be/internal/transaction/service"
 	transCore "medix-be/internal/transaction/service/core"
-	transReturn "medix-be/internal/transaction/service/returns"
 	transReceipt "medix-be/internal/transaction/service/receipt"
 	transReport "medix-be/internal/transaction/service/report"
 
@@ -33,13 +32,11 @@ func StartApp(cfg *ModuleConfig) {
 	// Create transaction services (for cart operations)
 	transactionRepo := transRepo.NewTransactionRepository(cfg.DB)
 	coreSvc := transCore.NewCoreService(transactionRepo)
-	returnsSvc := transReturn.NewReturnService(transactionRepo)
 	receiptSvc := transReceipt.NewReceiptService(transactionRepo)
 	reportSvc := transReport.NewReportService(transactionRepo)
 	transactionSvc := transService.NewTransactionService(
 		cfg.Logger,
 		coreSvc,
-		returnsSvc,
 		receiptSvc,
 		reportSvc,
 	)

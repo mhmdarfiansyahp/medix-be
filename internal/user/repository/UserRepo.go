@@ -10,6 +10,7 @@ type UserRepository interface {
 	FindAll(page int, limit int, search string, role string, status string) ([]*model.User, int64, error)
 	FindByID(id uint) (*model.User, error)
 	FindByUsername(username string) (*model.User, error)
+	FindByUsernameOrIdentifier(identifier string) (*model.User, error)
 	Update(user *model.User) error
 	Delete(id uint) error
 }
@@ -84,6 +85,20 @@ func (r *userRepository) FindByUsername(username string) (*model.User, error) {
 
 	err := r.db.
 		Where("username = ?", username).
+		First(&user).Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &user, nil
+}
+
+func (r *userRepository) FindByUsernameOrIdentifier(identifier string) (*model.User, error) {
+	var user model.User
+
+	err := r.db.
+		Where("username = ? OR email = ?", identifier, identifier).
 		First(&user).Error
 
 	if err != nil {

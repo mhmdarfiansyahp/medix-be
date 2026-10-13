@@ -27,19 +27,6 @@ type TransactionRepository interface {
 	UpdateStatus(tx *gorm.DB, id uint, status int) error
 	GetUser(tx *gorm.DB, id uint) (*entities.User, error)
 
-	// Retur
-	CreateReturn(tx *gorm.DB, ret *entities.Return) error
-	CreateReturnItem(tx *gorm.DB, item *entities.ReturnItem) error
-	GetReturnByID(id uint) (*entities.Return, error)
-	FindAllReturns() ([]entities.Return, error)
-	FindTodayReturnsByUser(idUser uint) ([]entities.Return, error)
-	UpdateReturnStatus(tx *gorm.DB, id uint, status string) error
-	UpdateReturnStatusWithReason(tx *gorm.DB, id uint, status string, reason string) error
-
-	// Pengaturan
-	GetSetting(key string) (string, error)
-	SetSetting(key string, value string) error
-
 	GetDB() *gorm.DB
 }
 
@@ -247,92 +234,4 @@ func (r *transactionRepository) GetUser(tx *gorm.DB, id uint) (*entities.User, e
 		return nil, err
 	}
 	return &user, nil
-}
-
-func (r *transactionRepository) FindTodayReturnsByUser(idUser uint) ([]entities.Return, error) {
-	var returns []entities.Return
-	err := r.db.
-		Where("diajukan_oleh = ?", idUser).
-		Where("DATE(tanggal_retur) = CURRENT_DATE").
-		Preload("Items").
-		Order("tanggal_retur DESC").
-		Find(&returns).
-		Error
-	if err != nil {
-		return nil, err
-	}
-	return returns, nil
-}
-
-func (r *transactionRepository) CreateReturn(tx *gorm.DB, ret *entities.Return) error {
-	return tx.Create(ret).Error
-}
-
-func (r *transactionRepository) CreateReturnItem(tx *gorm.DB, item *entities.ReturnItem) error {
-	return tx.Create(item).Error
-}
-
-func (r *transactionRepository) GetReturnByID(id uint) (*entities.Return, error) {
-	var ret entities.Return
-	err := r.db.
-		Preload("Items").
-		Where("id_return = ?", id).
-		First(&ret).
-		Error
-	if err != nil {
-		return nil, err
-	}
-	return &ret, nil
-}
-
-func (r *transactionRepository) FindAllReturns() ([]entities.Return, error) {
-	var returns []entities.Return
-	err := r.db.
-		Preload("Items").
-		Order("tanggal_retur DESC").
-		Find(&returns).
-		Error
-	if err != nil {
-		return nil, err
-	}
-	return returns, nil
-}
-
-func (r *transactionRepository) UpdateReturnStatus(tx *gorm.DB, id uint, status string) error {
-	return tx.
-		Model(&entities.Return{}).
-		Where("id_return = ?", id).
-		Update("status", status).
-		Error
-}
-
-func (r *transactionRepository) UpdateReturnStatusWithReason(tx *gorm.DB, id uint, status string, reason string) error {
-	return tx.
-		Model(&entities.Return{}).
-		Where("id_return = ?", id).
-		Updates(map[string]interface{}{
-			"status":           status,
-			"alasan_penolakan": reason,
-		}).
-		Error
-}
-
-func (r *transactionRepository) GetSetting(key string) (string, error) {
-	var s entities.Pengaturan
-	err := r.db.
-		Where("key = ?", key).
-		First(&s).
-		Error
-	if err != nil {
-		return "", err
-	}
-	return s.Value, nil
-}
-
-func (r *transactionRepository) SetSetting(key string, value string) error {
-	return r.db.
-		Model(&entities.Pengaturan{}).
-		Where("key = ?", key).
-		Update("value", value).
-		Error
 }

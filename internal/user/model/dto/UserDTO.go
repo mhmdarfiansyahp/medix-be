@@ -34,6 +34,7 @@ func (s *UserStatus) UnmarshalJSON(data []byte) error {
 type UserResponse struct {
 	IDUser             uint   `json:"id_user"`
 	NamaUser           string `json:"nama_user"`
+	Email              string `json:"email"`
 	NoTelp             string `json:"no_telp"`
 	Role               string `json:"role"`
 	Username           string `json:"username"`
@@ -44,6 +45,7 @@ type UserResponse struct {
 
 type CreateUserRequest struct {
 	NamaUser string     `json:"nama_user" binding:"required,max=100"`
+	Email    string     `json:"email" binding:"omitempty,email,max=100"`
 	NoTelp   string     `json:"no_telp" binding:"max=15"`
 	Role     string     `json:"role" binding:"required,oneof=admin kasir owner"`
 	Username string     `json:"username" binding:"required,max=50"`
@@ -54,6 +56,7 @@ type CreateUserRequest struct {
 
 type UpdateUserRequest struct {
 	NamaUser string     `json:"nama_user" binding:"omitempty,max=100"`
+	Email    string     `json:"email" binding:"omitempty,email,max=100"`
 	NoTelp   string     `json:"no_telp" binding:"omitempty,max=15"`
 	Role     string     `json:"role" binding:"omitempty,oneof=admin kasir owner"`
 	Username string     `json:"username" binding:"omitempty,max=50"`
@@ -64,6 +67,7 @@ type UpdateUserRequest struct {
 
 type UpdateProfileRequest struct {
 	NamaUser string `json:"nama_user" form:"nama_user" binding:"omitempty,max=100"`
+	Email    string `json:"email" form:"email" binding:"omitempty,email,max=100"`
 	NoTelp   string `json:"no_telp" form:"no_telp" binding:"omitempty,max=15"`
 	Username string `json:"username" form:"username" binding:"omitempty,max=50"`
 	Foto     string `json:"foto" form:"foto"`
@@ -129,5 +133,14 @@ type ResetPasswordResponse struct {
 
 type ChangePasswordRequest struct {
 	OldPassword string `json:"old_password" binding:"required"`
+	NewPassword string `json:"new_password" binding:"required,min=6"`
+}
+
+type ForgotPasswordRequest struct {
+	Identifier string `json:"identifier" binding:"required"`
+}
+
+type ResetPasswordWithTokenRequest struct {
+	Token       string `json:"token" binding:"required"`
 	NewPassword string `json:"new_password" binding:"required,min=6"`
 }

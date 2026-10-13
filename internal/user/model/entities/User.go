@@ -5,6 +5,7 @@ import "time"
 type User struct {
 	IDUser             uint      `gorm:"primaryKey;column:id_user" json:"id_user"`
 	NamaUser           string    `gorm:"column:nama_user;size:100;not null" json:"nama_user"`
+	Email              string    `gorm:"column:email;size:100;unique" json:"email"`
 	NoTelp             string    `gorm:"column:no_telp;size:20" json:"no_telp"`
 	Role               string    `gorm:"column:role;size:20;not null" json:"role"`
 	Username           string    `gorm:"column:username;size:50;not null;unique" json:"username"`

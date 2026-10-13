@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"math"
+	"medix-be/internal/common"
 	"medix-be/internal/user/model/dto"
 	model "medix-be/internal/user/model/entities"
 	"medix-be/internal/user/repository"
@@ -12,6 +13,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/spf13/viper"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -32,16 +34,19 @@ type UserService interface {
 	GetProfileByUsername(username string) (*dto.UserResponse, error)
 	ResetPassword(id uint) (*dto.ResetPasswordResponse, error)
 	ChangePassword(id uint, req dto.ChangePasswordRequest) error
+	ForgotPassword(req dto.ForgotPasswordRequest) error
+	ResetPasswordWithToken(req dto.ResetPasswordWithTokenRequest) error
 }
 
 type userService struct {
-	repo        repository.UserRepository
-	sessionRepo repository.SessionRepository
-	jwtSecret   string
+	repo         repository.UserRepository
+	sessionRepo  repository.SessionRepository
+	resetRepo    repository.PasswordResetTokenRepository
+	jwtSecret    string
 }
 
-func NewUserService(repo repository.UserRepository, sessionRepo repository.SessionRepository, jwtSecret string) UserService {
-	return &userService{repo: repo, sessionRepo: sessionRepo, jwtSecret: jwtSecret}
+func NewUserService(repo repository.UserRepository, sessionRepo repository.SessionRepository, resetRepo repository.PasswordResetTokenRepository, jwtSecret string) UserService {
+	return &userService{repo: repo, sessionRepo: sessionRepo, resetRepo: resetRepo, jwtSecret: jwtSecret}
 }
 
 func (s *userService) CreateUser(req dto.CreateUserRequest) (*dto.UserResponse, error) {
@@ -59,6 +64,7 @@ func (s *userService) CreateUser(req dto.CreateUserRequest) (*dto.UserResponse, 
 
 	user := model.User{
 		NamaUser: req.NamaUser,
+		Email:    req.Email,
 		NoTelp:   req.NoTelp,
 		Role:     req.Role,
 		Username: req.Username,
@@ -129,6 +135,9 @@ func (s *userService) UpdateUser(id uint, req dto.UpdateUserRequest) (*dto.UserR
 
 	if req.NamaUser != "" {
 		user.NamaUser = req.NamaUser
+	}
+	if req.Email != "" {
+		user.Email = req.Email
 	}
 	if req.NoTelp != "" {
 		user.NoTelp = req.NoTelp
@@ -374,6 +383,83 @@ func (s *userService) ChangePassword(id uint, req dto.ChangePasswordRequest) err
 	return nil
 }
 
+func (s *userService) ForgotPassword(req dto.ForgotPasswordRequest) error {
+	user, err := s.repo.FindByUsernameOrIdentifier(req.Identifier)
+	if err != nil {
+		// shortcut: timing-safe/privacy response, return nil so caller cannot enumerate users
+		return nil
+	}
+
+	tokenBytes := make([]byte, 32)
+	if _, err := rand.Read(tokenBytes); err != nil {
+		return errors.New("failed to generate reset token")
+	}
+	token := hex.EncodeToString(tokenBytes)
+
+	// Invalidate any existing unused reset tokens for this user
+	_ = s.resetRepo.InvalidateAllByUserID(user.IDUser)
+
+	resetToken := &model.PasswordResetToken{
+		IDUser:    user.IDUser,
+		Token:     token,
+		ExpiresAt: time.Now().Add(30 * time.Minute),
+	}
+
+	if err := s.resetRepo.Create(resetToken); err != nil {
+		return errors.New("failed to save reset token")
+	}
+
+	// shortcut: email notification mocked to stdout/log until SMTP provider configured
+	os.Stdout.WriteString("[FORGOT_PASSWORD] Reset link token for user " + user.Username + ": " + token + "\n")
+
+	if user.Email != "" {
+		feURL := viper.GetString("app.frontend_url")
+		if feURL == "" {
+			feURL = "http://localhost:5173"
+		}
+		resetLink := feURL + "/reset-password?token=" + token
+		tmpl := common.NewResetPasswordEmailTemplate(user.NamaUser, resetLink)
+		_ = common.SendTemplateEmail(user.Email, tmpl)
+	}
+
+	return nil
+}
+
+func (s *userService) ResetPasswordWithToken(req dto.ResetPasswordWithTokenRequest) error {
+	resetRecord, err := s.resetRepo.FindByToken(req.Token)
+	if err != nil {
+		return errors.New("token reset tidak valid atau sudah kedaluwarsa")
+	}
+
+	user, err := s.repo.FindByID(resetRecord.IDUser)
+	if err != nil {
+		return errors.New("user tidak ditemukan")
+	}
+
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.NewPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return errors.New("failed to process password")
+	}
+
+	user.Password = string(hashedPassword)
+	user.MustChangePassword = false
+
+	if err := s.repo.Update(user); err != nil {
+		return errors.New("failed to update user password")
+	}
+
+	if err := s.resetRepo.MarkAsUsed(resetRecord.ID); err != nil {
+		return errors.New("failed to update token status")
+	}
+
+	// AC: invalidate all active sessions
+	if err := s.sessionRepo.RevokeAllByUserID(user.IDUser); err != nil {
+		return errors.New("failed to revoke sessions")
+	}
+
+	return nil
+}
+
 func (s *userService) UpdateProfile(id uint, req *dto.UpdateProfileRequest) (*dto.UserResponse, error) {
 
 	user, err := s.repo.FindByID(id)
@@ -384,6 +470,10 @@ func (s *userService) UpdateProfile(id uint, req *dto.UpdateProfileRequest) (*dt
 
 	if req.NamaUser != "" {
 		user.NamaUser = req.NamaUser
+	}
+
+	if req.Email != "" {
+		user.Email = req.Email
 	}
 
 	if req.NoTelp != "" {
@@ -442,6 +532,7 @@ func toUserResponse(user model.User) dto.UserResponse {
 	return dto.UserResponse{
 		IDUser:             user.IDUser,
 		NamaUser:           user.NamaUser,
+		Email:              user.Email,
 		NoTelp:             user.NoTelp,
 		Role:               user.Role,
 		Username:           user.Username,
