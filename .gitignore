@@ -54,3 +54,4 @@ Desktop.ini
 *.jsonc
 
 *.opencode/
+*config/config.yaml

@@ -5,7 +5,7 @@ Compact guide for OpenCode sessions. If a fact is obvious from filenames, it is 
 ## Default working styles
 
 - Always use `caveman` skill at `ultra` level for every response in this project.
-- Always use Ponytail at `full` level for every task in this project.
+- Always use `ponytail` at `full` level for every task in this project.
 - Do not require slash commands to activate these defaults.
 - Stop Caveman when the user says `stop caveman` or `normal mode`.
 - Stop Ponytail when the user says `stop ponytail` or `normal mode`.
