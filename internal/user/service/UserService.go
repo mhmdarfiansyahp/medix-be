@@ -32,7 +32,6 @@ type UserService interface {
 	UpdateProfile(id uint, req *dto.UpdateProfileRequest) (*dto.UserResponse, error)
 	UpdateProfilePhoto(id uint, fotoPath string) (*dto.UserResponse, error)
 	GetProfileByUsername(username string) (*dto.UserResponse, error)
-	ResetPassword(id uint) (*dto.ResetPasswordResponse, error)
 	ChangePassword(id uint, req dto.ChangePasswordRequest) error
 	ForgotPassword(req dto.ForgotPasswordRequest) error
 	ResetPasswordWithToken(req dto.ResetPasswordWithTokenRequest) error
@@ -195,11 +194,11 @@ func (s *userService) Login(req *dto.LoginRequest) (*dto.LoginResponse, error) {
 
 	user, err := s.repo.FindByUsername(*req.Username)
 	if err != nil {
-		return nil, errors.New("username tidak ditemukan")
+		return nil, errors.New("username not found")
 	}
 
 	if user.Status == 0 {
-		return nil, errors.New("akun pengguna tidak aktif")
+		return nil, errors.New("user account is inactive")
 	}
 
 	err = bcrypt.CompareHashAndPassword(
@@ -207,7 +206,7 @@ func (s *userService) Login(req *dto.LoginRequest) (*dto.LoginResponse, error) {
 		[]byte(*req.Password),
 	)
 	if err != nil {
-		return nil, errors.New("kata sandi salah")
+		return nil, errors.New("incorrect password")
 	}
 
 	tokenString, err := s.generateAccessToken(user)
@@ -321,51 +320,14 @@ func generateRefreshToken() (string, error) {
 	return hex.EncodeToString(bytes), nil
 }
 
-func generateTempPassword() (string, error) {
-	bytes := make([]byte, 4)
-	if _, err := rand.Read(bytes); err != nil {
-		return "", err
-	}
-	return hex.EncodeToString(bytes), nil
-}
-
-func (s *userService) ResetPassword(id uint) (*dto.ResetPasswordResponse, error) {
-	user, err := s.repo.FindByID(id)
-	if err != nil {
-		return nil, errors.New("user tidak ditemukan")
-	}
-
-	tempPassword, err := generateTempPassword()
-	if err != nil {
-		return nil, errors.New("failed to generate temporary password")
-	}
-
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(tempPassword), bcrypt.DefaultCost)
-	if err != nil {
-		return nil, errors.New("failed to process password")
-	}
-
-	user.Password = string(hashedPassword)
-	user.MustChangePassword = true
-
-	if err := s.repo.Update(user); err != nil {
-		return nil, err
-	}
-
-	return &dto.ResetPasswordResponse{
-		Password: tempPassword,
-		Message:  "Password sementara dibuat. User wajib ganti password saat login pertama.",
-	}, nil
-}
-
 func (s *userService) ChangePassword(id uint, req dto.ChangePasswordRequest) error {
 	user, err := s.repo.FindByID(id)
 	if err != nil {
-		return errors.New("user tidak ditemukan")
+		return errors.New("user not found")
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.OldPassword)); err != nil {
-		return errors.New("kata sandi lama salah")
+		return errors.New("incorrect old password")
 	}
 
 	newHashed, err := bcrypt.GenerateFromPassword([]byte(req.NewPassword), bcrypt.DefaultCost)

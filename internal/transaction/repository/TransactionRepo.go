@@ -141,7 +141,6 @@ func (r *transactionRepository) FindTodayByUser(idUser uint) ([]*entities.Transa
 
 	err := r.db.
 		Preload("Details").
-		Where("id_user = ?", idUser).
 		Where("DATE(tgl_transaksi) = CURRENT_DATE").
 		Order("tgl_transaksi DESC").
 		Find(&list).
@@ -157,7 +156,6 @@ func (r *transactionRepository) GetTodaySummary(idUser uint) (float64, int, erro
 
 	err := r.db.
 		Model(&entities.Transaksi{}).
-		Where("id_user = ?", idUser).
 		Where("DATE(tgl_transaksi) = CURRENT_DATE").
 		Where("status = ?", entities.StatusTransaksiSelesai).
 		Select("COALESCE(SUM(total_harga), 0)").
@@ -170,7 +168,6 @@ func (r *transactionRepository) GetTodaySummary(idUser uint) (float64, int, erro
 
 	err = r.db.
 		Model(&entities.Transaksi{}).
-		Where("id_user = ?", idUser).
 		Where("DATE(tgl_transaksi) = CURRENT_DATE").
 		Where("status = ?", entities.StatusTransaksiSelesai).
 		Count(&count).

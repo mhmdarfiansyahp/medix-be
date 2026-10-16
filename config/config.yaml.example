@@ -1,0 +1,24 @@
+app:
+  name: "Medix BE"
+  port: "8080"
+  frontend_url: "http://localhost:5173"
+
+jwt:
+  secret: "your-jwt-secret-here"
+
+mail:
+  host: "smtp.example.com"
+  port: 587
+  username: "your-smtp-username"
+  password: "your-smtp-password"
+  from: "no-reply@medix.local"
+
+database:
+  host: localhost
+  port: your-port
+  username: your-username
+  password: your-password
+  name: your-database
+  ssl: disable
+
+migration_path: "file://migrations/data"

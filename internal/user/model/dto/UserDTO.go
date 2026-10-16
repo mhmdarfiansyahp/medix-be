@@ -126,11 +126,6 @@ type LogoutRequest struct {
 	RefreshToken string `json:"refresh_token" binding:"required"`
 }
 
-type ResetPasswordResponse struct {
-	Password string `json:"password"`
-	Message  string `json:"message"`
-}
-
 type ChangePasswordRequest struct {
 	OldPassword string `json:"old_password" binding:"required"`
 	NewPassword string `json:"new_password" binding:"required,min=6"`
