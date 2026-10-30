@@ -28,7 +28,7 @@ type CreateMedicineRequest struct {
 	NamaObat      string  `json:"nama_obat" binding:"required,max=150"`
 	MerkObat      string  `json:"merk_obat" binding:"max=100"`
 	JenisObatID   uint    `json:"jenis_obat_id" binding:"required"`
-	Barcode       *string `json:"barcode" binding:"max=50"`
+	Barcode       *string `json:"barcode" binding:"omitempty,max=50"`
 	TglKadaluarsa string  `json:"tgl_kadaluarsa" binding:"required"`
 	Harga         float64 `json:"harga" binding:"required,gte=0"`
 	Stok          int     `json:"stok" binding:"gte=0"`
@@ -41,7 +41,7 @@ type UpdateMedicineRequest struct {
 	NamaObat      string  `json:"nama_obat" binding:"omitempty,max=150"`
 	MerkObat      string  `json:"merk_obat" binding:"max=100"`
 	JenisObatID   uint    `json:"jenis_obat_id"`
-	Barcode       *string `json:"barcode" binding:"max=50"`
+	Barcode       *string `json:"barcode" binding:"omitempty,max=50"`
 	TglKadaluarsa string  `json:"tgl_kadaluarsa"`
 	Harga         float64 `json:"harga" binding:"omitempty,gte=0"`
 	Stok          int     `json:"stok" binding:"omitempty,gte=0"`

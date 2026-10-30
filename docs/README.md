@@ -5,7 +5,7 @@
 | File | Description | Render With |
 |------|-------------|-------------|
 | `architecture.mmd` | System architecture diagram | Mermaid Live, VS Code, GitHub |
-| `er-diagram.mmd` | Database ER diagram | Mermaid Live, VS Code, GitHub |
+| `diagrams/er-diagram.mmd` | Database ER diagram | Mermaid Live, VS Code, GitHub |
 | `openapi.yaml` | OpenAPI 3.0 specification | Swagger UI, Redoc, Postman |
 
 ## 🚀 Quick View
@@ -18,7 +18,7 @@ code docs/architecture.mmd
 
 ### ER Diagram
 ```bash
-code docs/er-diagram.mmd
+code docs/diagrams/er-diagram.mmd
 ```
 
 ### OpenAPI Spec (Swagger UI)

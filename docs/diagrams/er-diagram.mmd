@@ -9,15 +9,21 @@ erDiagram
         string username UK
         string password
         smallint status
+        string email
         string foto
+        boolean must_change_password
         timestamptz created_at
         timestamptz updated_at
     }
+
+    USERS ||--o{ TRANSACTION_RETUR : approves
+    USERS ||--o{ TRANSACTION_RETUR : "diajukan oleh"
 
     JENIS_OBAT ||--o{ OBAT : categorizes
     JENIS_OBAT {
         int id_jenis PK
         string nama_jenis UK
+        text deskripsi
     }
 
     OBAT ||--o{ DETAIL_PEMBELIAN : "has detail"
@@ -39,12 +45,16 @@ erDiagram
     }
 
     TRANSACTION ||--o{ DETAIL_PEMBELIAN : contains
+    TRANSACTION ||--o{ TRANSACTION_RETUR : "original"
     TRANSACTION {
         int id_transaksi PK
         int id_user FK
         timestamptz tgl_transaksi
         numeric total_harga
         smallint status
+        varchar(20) metode_bayar
+        numeric uang_diterima
+        numeric kembalian
         timestamptz created_at
     }
 
@@ -55,5 +65,48 @@ erDiagram
         int jumlah
         numeric harga_satuan
         numeric subtotal
+    }
+
+    TRANSACTION_RETUR {
+        int id_return PK
+        int id_transaksi FK
+        text alasan
+        timestamptz tanggal_retur
+        int diajukan_oleh FK
+        varchar(20) status
+        text alasan_penolakan
+    }
+
+    TRANSACTION_RETUR_ITEM {
+        int id_item PK
+        int id_return FK
+        int id_obat FK
+        int jumlah
+        text alasan_item
+        boolean kondisi_layak
+        int stok_kembali
+    }
+
+    SESSIONS {
+        uuid id_session PK
+        uint id_user FK
+        text refresh_token
+        boolean revoked
+        timestamptz expires_at
+        timestamptz created_at
+    }
+
+    PASSWORD_RESET_TOKENS {
+        serial id PK
+        uint id_user FK
+        varchar(255) token
+        timestamp expires_at
+        boolean used
+        timestamp created_at
+    }
+
+    PENGATURAN {
+        varchar(100) key PK
+        text value
     }
 ```
