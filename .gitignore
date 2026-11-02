@@ -55,7 +55,8 @@ Desktop.ini
 
 *.opencode/
 *.agents/
-config/config.yaml.agents/
+config/config.yaml
+.agents/
 skills-lock.json
 strix_runs/
 coverage
