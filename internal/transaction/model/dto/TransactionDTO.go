@@ -8,8 +8,10 @@ type DetailItemRequest struct {
 }
 
 type CreateTransactionRequest struct {
-	IDUser  uint                `json:"id_user"`
-	Details []DetailItemRequest `json:"details" binding:"required,gt=0,dive"`
+	IDUser       uint                `json:"id_user"`
+	Details      []DetailItemRequest `json:"details" binding:"required,gt=0,dive"`
+	MetodeBayar  string              `json:"metode_bayar"`
+	UangDiterima float64             `json:"uang_diterima"`
 }
 
 type AddToCartRequest struct {

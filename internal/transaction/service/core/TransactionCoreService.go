@@ -86,11 +86,27 @@ func (s *transactionCoreService) CreateTransaction(userID uint, req dto.CreateTr
 			)
 		}
 
+		// Hitung kembalian dan set metode bayar jika disediakan
+		metodeBayar := req.MetodeBayar
+		if metodeBayar == "" {
+			metodeBayar = "tunai"
+		}
+		uangDiterima := req.UangDiterima
+		var kembalian float64
+		if metodeBayar == "tunai" && uangDiterima > 0 {
+			if uangDiterima >= totalHarga {
+				kembalian = uangDiterima - totalHarga
+			}
+		}
+
 		// Buat transaksi utama
 		transaksi = entities.Transaksi{
-			IDUser:     userID,
-			TotalHarga: totalHarga,
-			Status:     entities.StatusTransaksiSelesai,
+			IDUser:       userID,
+			TotalHarga:   totalHarga,
+			Status:       entities.StatusTransaksiSelesai,
+			MetodeBayar:  metodeBayar,
+			UangDiterima: uangDiterima,
+			Kembalian:    kembalian,
 		}
 
 		if err := s.repo.Create(tx, &transaksi); err != nil {
