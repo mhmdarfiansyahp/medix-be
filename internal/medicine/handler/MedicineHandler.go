@@ -9,6 +9,7 @@ import (
 	"medix-be/internal/common/response"
 	"medix-be/internal/medicine/model/dto"
 	"medix-be/internal/medicine/service"
+	"medix-be/internal/middleware"
 	transDto "medix-be/internal/transaction/model/dto"
 
 	"github.com/gin-gonic/gin"
@@ -56,14 +57,14 @@ func (h *MedicineHandler) RegisterRouter() {
 	h.router.GET("/alerts/expiring", h.GetExpiring())
 	h.router.GET("/alerts/summary", h.GetNotificationSummary())
 
-	h.router.POST("", h.CreateMedicine())
+	h.router.POST("", middleware.RequireRoles("admin"), h.CreateMedicine())
 	h.router.GET("", h.GetAllMedicines())
 	h.router.GET("/:id", h.GetMedicineByID())
 	h.router.GET("/barcode/:barcode", h.GetMedicineByBarcode())
-	h.router.POST("/scan", h.ScanMedicine())
-	h.router.PUT("/:id", h.UpdateMedicine())
-	h.router.PATCH("/:id/status", h.ToggleActiveStatus())
-	h.router.DELETE("/:id", h.DeleteMedicine())
+	h.router.POST("/scan", middleware.RequireRoles("admin", "kasir"), h.ScanMedicine())
+	h.router.PUT("/:id", middleware.RequireRoles("admin"), h.UpdateMedicine())
+	h.router.PATCH("/:id/status", middleware.RequireRoles("admin"), h.ToggleActiveStatus())
+	h.router.DELETE("/:id", middleware.RequireRoles("admin"), h.DeleteMedicine())
 }
 
 func (h *MedicineHandler) CreateMedicine() gin.HandlerFunc {
