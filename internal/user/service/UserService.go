@@ -371,9 +371,6 @@ func (s *userService) ForgotPassword(req dto.ForgotPasswordRequest) error {
 		return errors.New("failed to save reset token")
 	}
 
-	// shortcut: email notification mocked to stdout/log until SMTP provider configured
-	os.Stdout.WriteString("[FORGOT_PASSWORD] Reset link token for user " + user.Username + ": " + token + "\n")
-
 	if user.Email != "" {
 		feURL := viper.GetString("app.frontend_url")
 		if feURL == "" {

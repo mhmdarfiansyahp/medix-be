@@ -27,6 +27,10 @@ func main() {
 	logger := logrus.New()
 	r := gin.Default()
 
+	if err := r.SetTrustedProxies(nil); err != nil {
+		log.Fatal(err)
+	}
+	
 	r.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"http://localhost:5173"}, // Your Vite frontend URL
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
@@ -56,10 +60,10 @@ func main() {
 	})
 
 	user.StartApp(&user.UserHandler{
-		DB:     config.DB,
-		Logger: logger,
-		Router: apiV1,
-		AuthRouter:   authAPI,
+		DB:         config.DB,
+		Logger:     logger,
+		Router:     apiV1,
+		AuthRouter: authAPI,
 	})
 
 	transaction.StartApp(&transaction.TransactionHandler{

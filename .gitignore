@@ -54,4 +54,10 @@ Desktop.ini
 *.jsonc
 
 *.opencode/
+*.agents/
 config/config.yaml
+.agents/
+skills-lock.json
+strix_runs/
+coverage
+coverage.out

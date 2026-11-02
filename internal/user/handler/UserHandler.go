@@ -10,11 +10,13 @@ import (
 	"time"
 
 	"medix-be/internal/common/response"
+	"medix-be/internal/middleware"
 	"medix-be/internal/user/model/dto"
 	"medix-be/internal/user/service"
 
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
+	"golang.org/x/time/rate"
 )
 
 type UserHandler struct {
@@ -52,17 +54,20 @@ func (h *UserHandler) RegisterRouter() {
 	public := h.routers[0]
 	protected := h.routers[1]
 
-	public.POST("/login", h.Login())
-	public.POST("", h.CreateUser())
+	loginLimiter := middleware.RateLimitMiddleware(rate.Every(60*time.Second/5), 5)
+	forgotResetLimiter := middleware.RateLimitMiddleware(rate.Every(60*time.Second/3), 3)
+
+	public.POST("/login", loginLimiter, h.Login())
 	public.POST("/refresh", h.RefreshToken())
 	public.POST("/logout", h.Logout())
-	public.POST("/forgot-password", h.ForgotPassword())
-	public.POST("/reset-password", h.ResetPasswordWithToken())
+	public.POST("/forgot-password", forgotResetLimiter, h.ForgotPassword())
+	public.POST("/reset-password", forgotResetLimiter, h.ResetPasswordWithToken())
 
-	protected.GET("", h.GetAllUsers())
+	protected.POST("", middleware.RequireRoles("admin"), h.CreateUser())
+	protected.GET("", middleware.RequireRoles("admin"), h.GetAllUsers())
 	protected.GET("/:id", h.GetUserByID())
 	protected.PUT("/:id", h.UpdateUser())
-	protected.DELETE("/:id", h.DeleteUser())
+	protected.DELETE("/:id", middleware.RequireRoles("admin"), h.DeleteUser())
 	protected.GET("/profile", h.GetProfile())
 	protected.PUT("/profile", h.UpdateProfile())
 	protected.POST("/profile/photo", h.UploadProfilePhoto())
@@ -132,6 +137,17 @@ func (h *UserHandler) GetUserByID() gin.HandlerFunc {
 			return
 		}
 
+		authUserID, _ := c.Get("user_id")
+		authRole, _ := c.Get("role")
+
+		isAdmin := authRole == "admin"
+		isSelf := authUserID != nil && authUserID.(uint) == uint(id)
+
+		if !isAdmin && !isSelf {
+			response.Error(c, http.StatusForbidden, "access denied")
+			return
+		}
+
 		res, err := h.userService.GetUserByID(uint(id))
 		if err != nil {
 			response.Error(c, http.StatusNotFound, err.Error())
@@ -151,10 +167,26 @@ func (h *UserHandler) UpdateUser() gin.HandlerFunc {
 			return
 		}
 
+		authUserID, _ := c.Get("user_id")
+		authRole, _ := c.Get("role")
+
+		isAdmin := authRole == "admin"
+		isSelf := authUserID != nil && authUserID.(uint) == uint(id)
+
+		if !isAdmin && !isSelf {
+			response.Error(c, http.StatusForbidden, "access denied")
+			return
+		}
+
 		var payload dto.UpdateUserRequest
 		if err := c.ShouldBindJSON(&payload); err != nil {
 			response.Error(c, http.StatusBadRequest, err.Error())
 			return
+		}
+
+		if !isAdmin {
+			payload.Role = ""
+			payload.Status = ""
 		}
 
 		res, err := h.userService.UpdateUser(uint(id), payload)
