@@ -8,6 +8,7 @@ import (
 	"medix-be/internal/common/response"
 	"medix-be/internal/drug/model/dto"
 	"medix-be/internal/drug/service"
+	"medix-be/internal/middleware"
 
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
@@ -43,11 +44,11 @@ func StartTypeDrugHandler(contract *HandlerContract, props *TypeDrugHandlerProps
 }
 
 func (h *TypeDrugHandler) RegisterRouter() {
-	h.router.POST("", h.CreateTypeDrug())
+	h.router.POST("", middleware.RequireRoles("admin"), h.CreateTypeDrug())
 	h.router.GET("", h.GetAllTypeDrugs())
 	h.router.GET("/:id", h.GetTypeDrugByID())
-	h.router.PUT("/:id", h.UpdateTypeDrug())
-	h.router.DELETE("/:id", h.DeleteTypeDrug())
+	h.router.PUT("/:id", middleware.RequireRoles("admin"), h.UpdateTypeDrug())
+	h.router.DELETE("/:id", middleware.RequireRoles("admin"), h.DeleteTypeDrug())
 }
 
 func (h *TypeDrugHandler) CreateTypeDrug() gin.HandlerFunc {
